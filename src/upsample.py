@@ -129,6 +129,7 @@ def max_fieldmap(maps):
         return ((0, 0), (1, 1), (1, 1)), []
     return biggest, bp
 
+
 def shortest_layer_path(start, end, layers):
     # First, build a blob-to-outgoing-layer graph
     links_from = {}
