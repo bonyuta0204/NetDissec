@@ -3,6 +3,7 @@
 dataset
 dissection
 zoo
+probes/
 !/dataset/README.md
 !/dissection/README.md
 !/zoo/README.md
