@@ -28,6 +28,8 @@ MEAN=[109.5388, 118.6897, 124.6901]
 
 def create_probe(
 		directory, dataset, weights, mean, blobs)
-		
+	data = loadseg.SegmentationData(dataset)		
+	ed = expdir.ExperimentDirectory(directory)
+
 if __name__  == "__main__":
 	create_probe("./dissection", "./dataset/broden1_227","./zoo/caffe_reference_places365.caffemodel", MEAN, ["fc8"] )
