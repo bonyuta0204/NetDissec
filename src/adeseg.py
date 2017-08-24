@@ -8,6 +8,7 @@ from scipy.io import loadmat
 from scipy.misc import imread
 from collections import namedtuple
 
+
 class AdeSegmentation(AbstractSegmentation):
     def __init__(self, directory=None, version=None):
         # Default to value of ADE20_ROOT env variable
@@ -28,9 +29,9 @@ class AdeSegmentation(AbstractSegmentation):
         index = mat['index']
         Ade20kIndex = namedtuple('Ade20kIndex', index.dtype.names)
         self.index = Ade20kIndex(
-               **{name: index[name][()] for name in index.dtype.names})
+            **{name: index[name][()] for name in index.dtype.names})
         self.scenes = ['-'] + [
-                norm_name(s) for s in sorted(set(self.index.scene))]
+            norm_name(s) for s in sorted(set(self.index.scene))]
         self.scene_map = dict((s, i) for i, s in enumerate(self.scenes))
         # Zero out special ~ scene names, which mean unlabeled.
         for k in self.scene_map:
@@ -61,11 +62,11 @@ class AdeSegmentation(AbstractSegmentation):
     def metadata(self, i):
         '''Returns an object that can be used to create all segmentations.'''
         return dict(
-                filename=self.filename(i),
-                seg_filename=self.seg_filename(i),
-                part_filenames=self.part_filenames(i),
-                scene=self.scene_map[norm_name(self.index.scene[i])]
-                )
+            filename=self.filename(i),
+            seg_filename=self.seg_filename(i),
+            part_filenames=self.part_filenames(i),
+            scene=self.scene_map[norm_name(self.index.scene[i])]
+        )
 
     @classmethod
     def resolve_segmentation(cls, m, categories=None):
@@ -82,7 +83,7 @@ class AdeSegmentation(AbstractSegmentation):
         shape = arrs[0].shape[-2:] if arrs else (1, 1)
         return result, shape
 
-    ### End of contract for AbstractSegmentation
+    # End of contract for AbstractSegmentation
 
     def seg_filename(self, n):
         '''Returns the segmentation filename for the nth dataset image.'''
@@ -110,12 +111,15 @@ class AdeSegmentation(AbstractSegmentation):
                 return globbed[0]
         return result
 
+
 def norm_name(s):
     return s.replace(' - ', '-').replace('/', '-')
+
 
 def load_image(m):
     '''Returns the nth dataset image as a numpy array.'''
     return imread(m['filename'])
+
 
 def load_segmentation(m):
     '''Returns the nth dataset segmentation as a numpy array,
@@ -123,6 +127,7 @@ def load_segmentation(m):
     '''
     data = imread(m['seg_filename'])
     return decodeClassMask(data)
+
 
 def load_parts(m):
     '''Returns an list of part segmentations for the nth dataset item,
@@ -136,11 +141,13 @@ def load_parts(m):
         return []
     return numpy.concatenate(tuple(m[numpy.newaxis] for m in result))
 
+
 def decodeClassMask(im):
     '''Decodes pixel-level object/part class and instance data from
     the given image, previously encoded into RGB channels.'''
     # Classes are a combination of RG channels (dividing R by 10)
-    return (im[:,:,0] // 10) * 256 + im[:,:,1]
+    return (im[:, :, 0] // 10) * 256 + im[:, :, 1]
+
 
 def wants(what, option):
     if option is None:

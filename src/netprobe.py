@@ -25,6 +25,7 @@ import expdir
 caffe.set_mode_gpu()
 caffe.set_device(0)
 
+
 def create_probe(
         directory, dataset, definition, weights, mean, blobs,
         colordepth=3,
@@ -80,7 +81,7 @@ def create_probe(
 
     # Create new (empty) mmaps
     if verbose:
-         print 'Creating new mmaps.'
+        print 'Creating new mmaps.'
     out = {}
     rot = None
     if rotation_seed is not None:
@@ -99,9 +100,9 @@ def create_probe(
 
     # The main loop
     if verbose:
-         print 'Beginning work.'
+        print 'Beginning work.'
     pf = loadseg.SegmentationPrefetcher(data, categories=['image'],
-            split=split, once=True, batch_size=batch_size, ahead=ahead)
+                                        split=split, once=True, batch_size=batch_size, ahead=ahead)
     index = 0
     start_time = time.time()
     last_batch_time = start_time
@@ -128,7 +129,7 @@ def create_probe(
         if rot is not None:
             for key in out.keys():
                 result[key] = numpy.swapaxes(numpy.tensordot(
-                        rot[key], result[key], axes=((1,), (1,))), 0, 1)
+                    rot[key], result[key], axes=((1,), (1,))), 0, 1)
         # print 'Computation done'
         for key in out.keys():
             out[key][index:index + batch_size] = result[key]
@@ -137,8 +138,8 @@ def create_probe(
         if index >= data_size:
             break
     assert index == data_size, (
-            "Data source should return evey item once %d %d." %
-            (index, data_size))
+        "Data source should return evey item once %d %d." %
+        (index, data_size))
     if verbose:
         print 'Renaming mmaps.'
     for blob in blobs:
@@ -161,6 +162,7 @@ def ensure_dir(targetdir):
         except:
             print 'Could not create', targetdir
             pass
+
 
 def write_readme_file(args, ed, verbose):
     '''
@@ -187,6 +189,7 @@ def write_readme_file(args, ed, verbose):
         except:
             pass
 
+
 if __name__ == '__main__':
     import sys
     import traceback
@@ -194,58 +197,58 @@ if __name__ == '__main__':
     try:
         import loadseg
 
-        parser = argparse.ArgumentParser(description=
-            'Probe a caffe network and save results in a directory.')
+        parser = argparse.ArgumentParser(
+            description='Probe a caffe network and save results in a directory.')
         parser.add_argument(
-                '--directory',
-                default='.',
-                help='output directory for the net probe')
+            '--directory',
+            default='.',
+            help='output directory for the net probe')
         parser.add_argument(
-                '--blobs',
-                nargs='*',
-                help='network blob names to collect')
+            '--blobs',
+            nargs='*',
+            help='network blob names to collect')
         parser.add_argument(
-                '--definition',
-                help='the deploy prototext defining the net')
+            '--definition',
+            help='the deploy prototext defining the net')
         parser.add_argument(
-                '--weights',
-                help='the caffemodel file of weights for the net')
+            '--weights',
+            help='the caffemodel file of weights for the net')
         parser.add_argument(
-                '--mean',
-                nargs='*', type=float,
-                help='mean values to subtract from input')
+            '--mean',
+            nargs='*', type=float,
+            help='mean values to subtract from input')
         parser.add_argument(
-                '--dataset',
-                help='the directory containing the dataset to use')
+            '--dataset',
+            help='the directory containing the dataset to use')
         parser.add_argument(
-                '--split',
-                help='the split of the dataset to use')
+            '--split',
+            help='the split of the dataset to use')
         parser.add_argument(
-                '--limit',
-                type=int, default=None,
-                help='limit dataset to this size')
+            '--limit',
+            type=int, default=None,
+            help='limit dataset to this size')
         parser.add_argument(
-                '--batch_size',
-                type=int, default=256,
-                help='the batch size to use')
+            '--batch_size',
+            type=int, default=256,
+            help='the batch size to use')
         parser.add_argument(
-                '--ahead',
-                type=int, default=4,
-                help='number of batches to prefetch')
+            '--ahead',
+            type=int, default=4,
+            help='number of batches to prefetch')
         parser.add_argument(
-                '--rotation_seed',
-                type=int, default=None,
-                help='the seed for the random rotation to apply')
+            '--rotation_seed',
+            type=int, default=None,
+            help='the seed for the random rotation to apply')
         parser.add_argument(
-                '--rotation_power',
-                type=float, default=1.0,
-                help='the power of hte random rotation')
+            '--rotation_power',
+            type=float, default=1.0,
+            help='the power of hte random rotation')
         parser.add_argument(
-                '--colordepth',
-                type=int, default=3,
-                help='set to 1 for grayscale')
+            '--colordepth',
+            type=int, default=3,
+            help='set to 1 for grayscale')
         args = parser.parse_args()
-        
+
         create_probe(
             args.directory, args.dataset, args.definition, args.weights,
             numpy.array(args.mean, dtype=numpy.float32), args.blobs,

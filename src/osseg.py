@@ -5,6 +5,7 @@ import colorname
 from loadseg import AbstractSegmentation
 from scipy.misc import imread
 
+
 class OpenSurfaceSegmentation(AbstractSegmentation):
     def __init__(self, directory=None, supply=None):
         directory = os.path.expanduser(directory)
@@ -15,7 +16,7 @@ class OpenSurfaceSegmentation(AbstractSegmentation):
         with open(os.path.join(directory, 'label-name-colors.csv')) as f:
             for row in DictUnicodeReader(f):
                 object_name_map[row['name_name']] = int(
-                        row['green_color'])
+                    row['green_color'])
         self.object_names = ['-'] * (1 + max(object_name_map.values()))
         for k, v in object_name_map.items():
             self.object_names[v] = k
@@ -24,7 +25,7 @@ class OpenSurfaceSegmentation(AbstractSegmentation):
         with open(os.path.join(directory, 'label-substance-colors.csv')) as f:
             for row in DictUnicodeReader(f):
                 subst_name_map[row['substance_name']] = int(
-                        row['red_color'])
+                    row['red_color'])
         self.substance_names = ['-'] * (1 + max(subst_name_map.values()))
         for k, v in subst_name_map.items():
             self.substance_names[v] = k
@@ -86,17 +87,19 @@ class OpenSurfaceSegmentation(AbstractSegmentation):
         if wants('scene', categories) and wants('scene', supply):
             result['scene'] = scene
         if wants('material', categories) and wants('material', supply):
-            result['material'] = labels[:,:,0]
+            result['material'] = labels[:, :, 0]
         if wants('object', categories) and wants('object', supply):
-            result['object'] = labels[:,:,1]
+            result['object'] = labels[:, :, 1]
         if wants('color', categories) and wants('color', supply):
             result['color'] = colorname.label_major_colors(imread(fnjpg)) + 1
         arrs = [a for a in result.values() if numpy.shape(a) >= 2]
         shape = arrs[0].shape[-2:] if arrs else (1, 1)
         return result, shape
 
+
 def norm_name(s):
     return s.replace(' - ', '-').replace('/', '-').strip().lower()
+
 
 def wants(what, option):
     if option is None:

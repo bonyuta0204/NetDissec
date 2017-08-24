@@ -61,6 +61,7 @@ def plot_analysis(data_csv, ax=None, name=" ", error_bar=True):
     ax.set_ylabel("Interpretability")
     return ax
 
+
 if __name__ == "__main__":
     cd = Path.cwd()
     csvs = cd.rglob("*.csv")

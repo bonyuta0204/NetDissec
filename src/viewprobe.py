@@ -13,6 +13,7 @@ from scipy.misc import imread, imresize, imsave
 from loadseg import normalize_label
 import expdir
 
+
 class NetworkProbe:
     def __init__(self, directory, blobs=None):
         self.ed = expdir.ExperimentDirectory(directory)
@@ -35,28 +36,28 @@ class NetworkProbe:
         tc = np.count_act_with_labelcat(layer)
         # If we were doing per-category activations p, then:
         # c = numpy.dot(p, labelcat.transpose())
-        epsilon = 1e-20 # avoid division-by-zero
+        epsilon = 1e-20  # avoid division-by-zero
         # If we were counting activations on non-category examples then:
         # iou = i / (a[:,numpy.newaxis] + g[numpy.newaxis,:] - i + epsilon)
-        iou = ti / (tc + tg[numpy.newaxis,:] - ti + epsilon)
+        iou = ti / (tc + tg[numpy.newaxis, :] - ti + epsilon)
         # Let's tally by primary-category.
         pc = primary_categories_per_index(self.ds)
         categories = self.ds.category_names()
         ar = numpy.arange(iou.shape[1])
         # actually - let's get the top iou for every category
-        pciou = numpy.array([iou * (pc[ar] == ci)[numpy.newaxis,:]
-                for ci in range(len(categories))])
+        pciou = numpy.array([iou * (pc[ar] == ci)[numpy.newaxis, :]
+                             for ci in range(len(categories))])
         # label_iou = iou.argmax(axis=1)
         label_pciou = pciou.argmax(axis=2)
         # name_iou = [self.ds.name(None, i) for i in label_iou]
         name_pciou = [
-                [self.ds.name(None, j) for j in label_pciou[ci]]
-                for ci in range(len(label_pciou))]
+            [self.ds.name(None, j) for j in label_pciou[ci]]
+            for ci in range(len(label_pciou))]
         # score_iou = iou[numpy.arange(iou.shape[0]), label_iou]
         score_pciou = pciou[
-                numpy.arange(pciou.shape[0])[:,numpy.newaxis],
-                numpy.arange(pciou.shape[1])[numpy.newaxis,:],
-                label_pciou]
+            numpy.arange(pciou.shape[0])[:, numpy.newaxis],
+            numpy.arange(pciou.shape[1])[numpy.newaxis, :],
+            label_pciou]
         bestcat_pciou = score_pciou.argsort(axis=0)[::-1]
         # Assign category for each label
         # cat_per_label = primary_categories_per_index(self.ds)
@@ -65,8 +66,8 @@ class NetworkProbe:
         return bestcat_pciou, name_pciou, score_pciou, label_pciou, tc, tg, ti
 
     def generate_html_summary(self, layer,
-            imsize=64, imcount=16, imscale=None, tally_stats=None,
-            gridwidth=None, verbose=False):
+                              imsize=64, imcount=16, imscale=None, tally_stats=None,
+                              gridwidth=None, verbose=False):
         print 'Generating html summary', (
             self.ed.filename(['html', '%s.html' % expdir.fn_safe(layer)]))
         # Grab tally stats
@@ -105,18 +106,19 @@ class NetworkProbe:
                 vis = self.activation_visualization(layer, unit, index)
                 if vis.shape[:2] != (imsize, imsize):
                     vis = imresize(vis, (imsize, imsize))
-                tiled[row*(imsize+1):row*(imsize+1)+imsize,
-                      col*(imsize+1):col*(imsize+1)+imsize,:] = vis
+                tiled[row * (imsize + 1):row * (imsize + 1) + imsize,
+                      col * (imsize + 1):col * (imsize + 1) + imsize, :] = vis
             imfn = 'image/%s%s-%04d.jpg' % (
-                    expdir.fn_safe(layer), gridname, unit)
+                expdir.fn_safe(layer), gridname, unit)
             imsave(self.ed.filename(['html', imfn]), tiled)
             labels = '; '.join(['%s (%s, %f)' %
-                    (name_pciou[c][unit], categories[c], score_pciou[c, unit])
-                    for c in bestcat_pciou[:,unit]])
+                                (name_pciou[c][unit], categories[c],
+                                 score_pciou[c, unit])
+                                for c in bestcat_pciou[:, unit]])
             html.extend([
                 '<h6>%s unit %d: %s</h6>' % (layer, unit + 1, labels),
                 '<img src="%s" height="%d">' % (imfn, imscale)
-                ])
+            ])
         html.extend([
             '</div>', '</body>', '</html>', ''])
         with open(self.ed.filename([
@@ -129,7 +131,7 @@ class NetworkProbe:
             print 'Generating csv summary', csvfile
             sys.stdout.flush()
         bestcat_pciou, name_pciou, score_pciou, label_pciou, tc, tg, ti = (
-                tally_stats)
+            tally_stats)
 
         # For each unit in a layer, outputs the following information:
         # - label: best interpretation
@@ -166,10 +168,10 @@ class NetworkProbe:
                 # Top images are top[unit]
                 bestcat = bestcat_pciou[0, unit]
                 data = {
-                   'unit': (unit + 1),
-                   'category': categories[bestcat],
-                   'label': name_pciou[bestcat][unit],
-                   'score': score_pciou[bestcat][unit]
+                    'unit': (unit + 1),
+                    'category': categories[bestcat],
+                    'label': name_pciou[bestcat][unit],
+                    'score': score_pciou[bestcat][unit]
                 }
                 for ci, cat in enumerate(categories):
                     label = label_pciou[ci][unit]
@@ -189,38 +191,38 @@ class NetworkProbe:
         from scipy.io import savemat
         lp = self.layer[layer]
         filename = self.ed.filename(
-                'quant-%d.mat' % lp.quantdata.shape[1], blob=layer)
-        savemat(filename, { 'quantile': lp.quantdata })
+            'quant-%d.mat' % lp.quantdata.shape[1], blob=layer)
+        savemat(filename, {'quantile': lp.quantdata})
 
     def generate_imgmax(self, layer, verbose=False):
         from scipy.io import savemat
         imgmax = self.ed.open_mmap(blob=layer, part='imgmax', mode='w+',
-                shape = self.layer[layer].blobdata.shape[:2])
+                                   shape=self.layer[layer].blobdata.shape[:2])
         imgmax[...] = self.layer[layer].blobdata.max(axis=(2, 3))
         self.ed.finish_mmap(imgmax)
         # Also copy out to mat file
         filename = self.ed.filename('imgmax.mat', blob=layer)
-        savemat(filename, { 'imgmax': imgmax })
+        savemat(filename, {'imgmax': imgmax})
         # And cache
         self.layer[layer].imgmax = imgmax
 
     def instance_data(self, i, normalize=True):
         record, shape = self.ds.resolve_segmentation(
-                self.ds.metadata(i), categories=None)
+            self.ds.metadata(i), categories=None)
         if normalize:
             default_shape = (1, ) + shape
             record = dict((cat, normalize_label(dat, default_shape))
-                    for cat, dat in record.items())
+                          for cat, dat in record.items())
         return record, shape
 
     def top_image_indexes(self, layer, unit, count=10):
-        t = self.layer[layer].count_a[:,unit].argsort()[::-1]
+        t = self.layer[layer].count_a[:, unit].argsort()[::-1]
         return t[:count]
 
     # Generates a mask at the "lp.level" quantile.
     def activation_mask(self, layer, unit, index, shape=None):
         if shape is None:
-             record, shape = self.instance_data(index)
+            record, shape = self.instance_data(index)
         sw, sh = shape
         # reduction = int(round(self.iw / float(sw)))
         lp = self.layer[layer]
@@ -229,8 +231,8 @@ class NetworkProbe:
         quantdata = lp.quantdata
         threshold = quantdata[unit, int(round(quantdata.shape[1] * lp.level))]
         up = upsample.upsampleL(
-                fieldmap, blobdata[index:index+1, unit],
-                shape=(self.ih, self.iw), scaleshape=(sh, sw))[0]
+            fieldmap, blobdata[index:index + 1, unit],
+            shape=(self.ih, self.iw), scaleshape=(sh, sw))[0]
         mask = up > threshold
         return mask
 
@@ -246,19 +248,19 @@ class NetworkProbe:
         unit_size = self.layer[layer].shape[1]
         label_size = self.ds.label_size()
         count = numpy.zeros(
-                (unit_size + 1, label_size + 1 + cat_count), dtype='int64')
+            (unit_size + 1, label_size + 1 + cat_count), dtype='int64')
         for i in range(len(tally)):
             t = tally[i]
-            count[t[:,0]+1, t[:,1]+1+cat_count] += t[:,2]
+            count[t[:, 0] + 1, t[:, 1] + 1 + cat_count] += t[:, 2]
         # count_a.shape = (unit size,)
-        count_a = count[1:,cat_count]
+        count_a = count[1:, cat_count]
         # this would summarize category intersections if we tallied them
         # count_c.shape = (unit_size, cat_size)
         # count_c = count[1:,0:cat_count]
         # count_g.shape = (label_size,)
-        count_g = count[0,1+cat_count:]
+        count_g = count[0, 1 + cat_count:]
         # count_i.shape = (unit_size, label_size)
-        count_i = count[1:,1+cat_count:]
+        count_i = count[1:, 1 + cat_count:]
         # return count_a, count_c, count_g, count_i
         return count_a, count_g, count_i
 
@@ -274,8 +276,9 @@ class NetworkProbe:
         for i in range(len(tally)):
             c1 = numpy.zeros((unit_size + 1, label_size + 1), dtype='int64')
             t = tally[i]
-            c1[t[:,0]+1, t[:,1]+1] = t[:,2]
-            count += c1[1:,0][:,numpy.newaxis] * (c1[0,1:][numpy.newaxis] > 0)
+            c1[t[:, 0] + 1, t[:, 1] + 1] = t[:, 2]
+            count += c1[1:, 0][:, numpy.newaxis] * \
+                (c1[0, 1:][numpy.newaxis] > 0)
         return count
 
     def count_act_with_labelcat(self, layer):
@@ -285,7 +288,7 @@ class NetworkProbe:
         # of a given label category.
         labelcat = onehot(primary_categories_per_index(self.ds))
         # Be sure to zero out the background label - it belongs to no category.
-        labelcat[0,:] = 0
+        labelcat[0, :] = 0
         tally = self.layer[layer].tally
         unit_size = self.layer[layer].shape[1]
         label_size = self.ds.label_size()
@@ -293,15 +296,15 @@ class NetworkProbe:
         for i in range(len(tally)):
             c1 = numpy.zeros((unit_size + 1, label_size + 1), dtype='int64')
             t = tally[i]
-            c1[t[:,0]+1, t[:,1]+1] = t[:,2]
-            count += c1[1:,0][:,numpy.newaxis] * (
-                    numpy.dot(c1[0,1:], labelcat) > 0)
+            c1[t[:, 0] + 1, t[:, 1] + 1] = t[:, 2]
+            count += c1[1:, 0][:, numpy.newaxis] * (
+                numpy.dot(c1[0, 1:], labelcat) > 0)
         # retval: (unit_size, label_size)
         return numpy.dot(count, numpy.transpose(labelcat))
 
     def max_act_indexes(self, layer, count=10):
         max_per_image = self.layer[layer].imgmax
-        return max_per_image.argsort(axis=0)[:-1-count:-1,:].transpose()
+        return max_per_image.argsort(axis=0)[:-1 - count:-1, :].transpose()
 
     def top_act_indexes(self, layer, count=10):
         tally = self.layer[layer].tally
@@ -311,9 +314,10 @@ class NetworkProbe:
         for i in range(len(tally)):
             acts = numpy.zeros((unit_size + 1, 2), dtype='int32')
             t = tally[i]
-            acts[t[:,0] + 1, (t[:,1] != -1).astype('int')] = t[:,2]
-            all_acts[i] = acts[1:,0]
-        return all_acts.argsort(axis=0)[:-1-count:-1,:].transpose()
+            acts[t[:, 0] + 1, (t[:, 1] != -1).astype('int')] = t[:, 2]
+            all_acts[i] = acts[1:, 0]
+        return all_acts.argsort(axis=0)[:-1 - count:-1, :].transpose()
+
 
 class LayerProbe:
     def __init__(self, ed, blob, ds):
@@ -326,17 +330,18 @@ class LayerProbe:
         # Load the blob quantile data and grab thresholds
         if ed.has_mmap(blob=blob, part='quant-*'):
             self.quantdata = ed.open_mmap(blob=blob, part='quant-*',
-                                shape=(self.shape[1], -1), mode='r')
+                                          shape=(self.shape[1], -1), mode='r')
         # Load tally too; tally_depth is inferred from file size.
         self.tally = ed.open_mmap(blob=blob, part='tally-*', decimal=True,
-                shape=(ds.size(), -1, 3), dtype='int32', mode='r')
+                                  shape=(ds.size(), -1, 3), dtype='int32', mode='r')
         # And load imgmax
         if ed.has_mmap(blob=blob, part='imgmax'):
             self.imgmax = ed.open_mmap(blob=blob, part='imgmax',
-                    shape=(ds.size(), self.shape[1]), mode='r')
+                                       shape=(ds.size(), self.shape[1]), mode='r')
         # Figure out tally level that was used.
         self.level = ed.glob_number(
-                'tally-*.mmap', blob=blob, decimal=True)
+            'tally-*.mmap', blob=blob, decimal=True)
+
 
 def primary_categories_per_index(ds, categories=None):
     '''
@@ -355,10 +360,11 @@ def primary_categories_per_index(ds, categories=None):
     result = []
     for i in range(ds.label_size(None)):
         maxcov, maxcat = max(
-                (ds.coverage(cat, catmap[cat][i]) if catmap[cat][i] else 0, ic)
-                for ic, cat in enumerate(categories))
+            (ds.coverage(cat, catmap[cat][i]) if catmap[cat][i] else 0, ic)
+            for ic, cat in enumerate(categories))
         result.append(maxcat)
     return numpy.array(result)
+
 
 def onehot(arr, minlength=None):
     '''
@@ -374,6 +380,7 @@ def onehot(arr, minlength=None):
     result[list(numpy.indices(arr.shape)) + [arr]] = 1
     return result
 
+
 if __name__ == '__main__':
     import argparse
     import sys
@@ -383,36 +390,36 @@ if __name__ == '__main__':
         parser = argparse.ArgumentParser(
             description='Generate visualization for probed activation data.')
         parser.add_argument(
-                '--directory',
-                default='.',
-                help='output directory for the net probe')
+            '--directory',
+            default='.',
+            help='output directory for the net probe')
         parser.add_argument(
-                '--format',
-                default='html',
-                help='html or csv or both')
+            '--format',
+            default='html',
+            help='html or csv or both')
         parser.add_argument(
-                '--csvorder',
-                help='csv header order')
+            '--csvorder',
+            help='csv header order')
         parser.add_argument(
-                '--blobs',
-                nargs='*',
-                help='network blob names to visualize')
+            '--blobs',
+            nargs='*',
+            help='network blob names to visualize')
         parser.add_argument(
-                '--gridwidth',
-                type=int, default=None,
-                help='width of visualization grid')
+            '--gridwidth',
+            type=int, default=None,
+            help='width of visualization grid')
         parser.add_argument(
-                '--imsize',
-                type=int, default=72,
-                help='thumbnail dimensions')
+            '--imsize',
+            type=int, default=72,
+            help='thumbnail dimensions')
         parser.add_argument(
-                '--imscale',
-                type=int, default=None,
-                help='thumbnail dimensions')
+            '--imscale',
+            type=int, default=None,
+            help='thumbnail dimensions')
         parser.add_argument(
-                '--imcount',
-                type=int, default=16,
-                help='number of thumbnails to include')
+            '--imcount',
+            type=int, default=16,
+            help='number of thumbnails to include')
         args = parser.parse_args()
         np = NetworkProbe(args.directory, blobs=args.blobs)
         for blob in args.blobs:
@@ -423,16 +430,16 @@ if __name__ == '__main__':
                 tally_stats = np.score_tally_stats(blob, verbose=True)
             if 'html' in formats:
                 np.generate_html_summary(blob,
-                        imsize=args.imsize, imscale=args.imscale,
-                        imcount=args.imcount, tally_stats=tally_stats,
-                        gridwidth=args.gridwidth,
-                        verbose=True)
+                                         imsize=args.imsize, imscale=args.imscale,
+                                         imcount=args.imcount, tally_stats=tally_stats,
+                                         gridwidth=args.gridwidth,
+                                         verbose=True)
             if 'csv' in formats:
                 filename = os.path.join(args.directory,
-                        '%s-result.csv' % expdir.fn_safe(blob))
+                                        '%s-result.csv' % expdir.fn_safe(blob))
                 np.generate_csv_summary(blob, filename, tally_stats,
-                        order=(args.csvorder.split(',')
-                            if args.csvorder else None), verbose=True)
+                                        order=(args.csvorder.split(',')
+                                               if args.csvorder else None), verbose=True)
             if 'quantmat' in formats:
                 np.generate_quantmat(blob, verbose=True)
     except:

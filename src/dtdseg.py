@@ -4,12 +4,13 @@ import colorname
 from loadseg import AbstractSegmentation
 from scipy.misc import imread
 
+
 class DtdSegmentation(AbstractSegmentation):
     def __init__(self, directory=None):
         directory = os.path.expanduser(directory)
         self.directory = directory
         with open(os.path.join(directory, 'labels',
-                'labels_joint_anno.txt')) as f:
+                               'labels_joint_anno.txt')) as f:
             self.dtd_meta = [line.split(None, 1) for line in f.readlines()]
         self.textures = ['-'] + sorted(list(set(sum(
             [c.split() for f, c in self.dtd_meta], []))))
@@ -45,10 +46,12 @@ class DtdSegmentation(AbstractSegmentation):
         if wants('texture', categories):
             result['texture'] = tnumbers
         if wants('color', categories):
-            result['color'] = colorname.label_major_colors(imread(filename)) + 1
+            result['color'] = colorname.label_major_colors(
+                imread(filename)) + 1
         arrs = [a for a in result.values() if numpy.shape(a) >= 2]
         shape = arrs[0].shape[-2:] if arrs else (1, 1)
         return result, shape
+
 
 def wants(what, option):
     if option is None:

@@ -6,10 +6,12 @@ from loadseg import AbstractSegmentation
 from scipy.io import loadmat
 from scipy.misc import imread
 
+
 class PascalSegmentation(AbstractSegmentation):
     '''
     Implements AbstractSegmentation for the pascal PARTS dataset.
     '''
+
     def __init__(self, directory, collapse_adjectives=None, version=None):
         directory = os.path.expanduser(directory)
 
@@ -18,7 +20,7 @@ class PascalSegmentation(AbstractSegmentation):
             contents = os.listdir(directory)
             if not list(c for c in contents if re.match('^JPEGImages$', c)):
                 version = sorted(c for c in contents if c.startswith('VOC') and
-                        os.path.isdir(os.path.join(directory, c)))[-1]
+                                 os.path.isdir(os.path.join(directory, c)))[-1]
             else:
                 version = ''
         self.directory = directory
@@ -33,19 +35,19 @@ class PascalSegmentation(AbstractSegmentation):
         self.collapse_adjectives = collapse_adjectives
         # Load the parts coding metadata from part2ind.m
         codes = load_part2ind(
-                os.path.join(directory, self.partdir, 'part2ind.m'))
+            os.path.join(directory, self.partdir, 'part2ind.m'))
         codes = normalize_all_readable(codes, collapse_adjectives)
         self.part_object_names, self.part_names, self.part_key = (
-                normalize_part_key(codes))
+            normalize_part_key(codes))
         # Load the PASCAL context segmentation labels
         self.object_names = load_context_labels(
-                os.path.join(directory, self.contextdir, 'labels.txt'))
+            os.path.join(directory, self.contextdir, 'labels.txt'))
         self.unknown_label = self.object_names.index('unknown')
         self.object_names[self.unknown_label] = '-'  # normalize unknown
         # Assume every mat file in the relevant directory is a segmentation.
         self.segs = sorted([n for n in os.listdir(
-                os.path.join(directory, self.partdir, 'Annotations_Part'))
-                if n.endswith('.mat')])
+            os.path.join(directory, self.partdir, 'Annotations_Part'))
+            if n.endswith('.mat')])
 
     def all_names(self, category, j):
         if category == 'color':
@@ -65,7 +67,7 @@ class PascalSegmentation(AbstractSegmentation):
     def filename(self, i):
         # Translate the segmentation mat file name to the .jpg filename
         return os.path.join(self.directory, self.version, 'JPEGImages',
-                self.segs[i].replace('.mat', '.jpg'))
+                            self.segs[i].replace('.mat', '.jpg'))
 
     def metadata(self, i):
         return (self.directory, self.version, self.partdir, self.contextdir,
@@ -77,20 +79,21 @@ class PascalSegmentation(AbstractSegmentation):
         result = {}
         if wants('color', categories):
             jpeg_fn = os.path.join(directory, version, 'JPEGImages',
-                    seg_fn.replace('.mat', '.jpg'))
+                                   seg_fn.replace('.mat', '.jpg'))
             result['color'] = colorname.label_major_colors(imread(jpeg_fn)) + 1
         if wants('part', categories):
             objs, parts = load_parts_segmentation(
                 os.path.join(directory, partdir, 'Annotations_Part', seg_fn),
-                part_key) # (ignore object layer the from parts segmentation)
+                part_key)  # (ignore object layer the from parts segmentation)
             result['part'] = parts
         if wants('object', categories):
             result['object'] = loadmat(
-                    os.path.join(directory, contextdir, 'trainval', seg_fn))[
-                            'LabelMap']
+                os.path.join(directory, contextdir, 'trainval', seg_fn))[
+                'LabelMap']
         arrs = [a for a in result.values() if numpy.shape(a) >= 2]
         shape = arrs[0].shape[-2:] if arrs else (1, 1)
         return result, shape
+
 
 def load_parts_segmentation(filename, part_key):
     '''
@@ -99,17 +102,17 @@ def load_parts_segmentation(filename, part_key):
     instance information for now.  If no objects are present, returns (0, 0).
     '''
     d = loadmat(filename)
-    instance_count = d['anno'][0,0]['objects'].shape[1]
+    instance_count = d['anno'][0, 0]['objects'].shape[1]
     # We need at least one instance annotated
     if not instance_count:
         return (0, 0)
-    mask_shape = d['anno'][0,0]['objects'][0,0]['mask'].shape
+    mask_shape = d['anno'][0, 0]['objects'][0, 0]['mask'].shape
     # We will merge all objects and parts into these two layers
     object_seg = numpy.zeros(mask_shape, dtype=numpy.int16)
     part_seg = numpy.zeros(mask_shape, dtype=numpy.int16)
     for i in range(instance_count):
-        obj = d['anno'][0,0]['objects'][0,i]
-        object_ind = obj['class_ind'][0,0]
+        obj = d['anno'][0, 0]['objects'][0, i]
+        object_ind = obj['class_ind'][0, 0]
         object_seg[obj['mask'].astype(numpy.bool)] = object_ind
         part_count = obj['parts'].shape[1]
         for i in range(part_count):
@@ -126,21 +129,22 @@ def load_parts_segmentation(filename, part_key):
     #
     # Every image has a name
     # d['anno'][0,0]['imname'][0] = '2008_005094'
-    
+
     # Name and index of an object class
     # d['anno'][0,0]['objects'][0,1]['class'][0] = u'tvmonitor'
     # d['anno'][0,0]['objects'][0,1]['class_ind'][0,0] = 20
-    
+
     # Object mask is a 0-1 bitmap
     # d['anno'][0,0]['objects'][0,1]['mask'].shape = (375, 500)
     # numpy.bincount(d['anno'][0,0]['objects'][0,1]['mask'].ravel()).nonzero() =
     #  [0, 1]
-    
+
     # Person has lots of parts...
     # d['anno'][0,0]['objects'][0,0]['class'][0] = u'person'
     # d['anno'][0,0]['objects'][0,0]['parts'].shape = (1, 22)
     # d['anno'][0,0]['objects'][0,0]['parts'][0,3]['part_name'] = 'lear'
     # d['anno'][0,0]['objects'][0,0]['parts'][0,3]['mask'].shape = (375, 500)
+
 
 def normalize_part_key(raw_names):
     '''
@@ -171,36 +175,40 @@ def normalize_part_key(raw_names):
         part_key[(c, p)] = code
     return object_class_names, part_class_names, part_key
 
+
 def normalize_all_readable(raw_keys, collapse_adjectives):
     return dict((k, (normalize_readable(c, collapse_adjectives),
                      normalize_readable(p, collapse_adjectives)))
-            for k, (c, p) in raw_keys.items())
+                for k, (c, p) in raw_keys.items())
+
 
 def normalize_readable(name, collapse_adjectives):
     # Long names for short part names that are unexplained in the file.
     decoded_names = dict(
-            lfho='left front hoof',
-            rfho='right back hoof',
-            lbho='left front hoof',
-            rbho='right back hoof',
-            fwheel='front wheel',
-            bwheel='back wheel',
-            frontside='front side',
-            leftside='left side',
-            rightside='right side',
-            backside='back side',
-            roofside='roof side',
-            leftmirror='left mirror',
-            rightmirror='right mirror'
-            )
+        lfho='left front hoof',
+        rfho='right back hoof',
+        lbho='left front hoof',
+        rbho='right back hoof',
+        fwheel='front wheel',
+        bwheel='back wheel',
+        frontside='front side',
+        leftside='left side',
+        rightside='right side',
+        backside='back side',
+        roofside='roof side',
+        leftmirror='left mirror',
+        rightmirror='right mirror'
+    )
     if name in decoded_names:
         name = decoded_names[name]
     # Other datasets use 'airplane'.
     name = name.replace('aeroplane', 'airplane')
     # If we need to remove adjectives like 'left' and 'right', do so now.h
     if collapse_adjectives is not None:
-        name = ' '.join(n for n in name.split() if n not in collapse_adjectives)
+        name = ' '.join(n for n in name.split()
+                        if n not in collapse_adjectives)
     return name
+
 
 def load_context_labels(labels_filename):
     '''
@@ -215,6 +223,7 @@ def load_context_labels(labels_filename):
         object_names[i] = n
     return object_names
 
+
 def load_part2ind(part2ind_filename):
     '''
     Parses the part2ind.m file from the PASCAL Parts distribution
@@ -224,7 +233,7 @@ def load_part2ind(part2ind_filename):
     import re
     from collections import OrderedDict
     with open(part2ind_filename, 'r') as part2ind_file:
-       lines = part2ind_file.readlines()
+        lines = part2ind_file.readlines()
     result = OrderedDict()
     for line in lines:
         # % [aeroplane]
@@ -247,7 +256,7 @@ def load_part2ind(part2ind_filename):
             part_index = int(m.group(3))
             # ('aeroplane', 'left wing')
             result[(object_index, part_name)] = (
-                    object_name, readable_name)
+                object_name, readable_name)
             continue
         # for ii = 1:10
         m = re.match(r'for ii = 1:(\d+)*', line)
@@ -277,7 +286,7 @@ def load_part2ind(part2ind_filename):
             first = int(m.group(3)) + 1  # one-based indexing
             for part_index in range(1, 1 + iteration_count):
                 result[(object_index, part_name + '_%d' % part_index)] = (
-                        object_name, readable_name)
+                    object_name, readable_name)
             continue
 
         # % only has sihouette mask
@@ -285,7 +294,7 @@ def load_part2ind(part2ind_filename):
         if m:
             object_index += 1
             result[(object_index, 'silhouette')] = (
-                    object_name, 'silhouette')
+                object_name, 'silhouette')
 
         # keySet = keys(pimap{8});
         # valueSet = values(pimap{8});
@@ -326,10 +335,12 @@ def load_part2ind(part2ind_filename):
         sys.exit(1)
     return result
 
+
 def wants(what, option):
     if option is None:
         return True
     return what in option
+
 
 if __name__ == '__main__':
     # raw_names = load_part2ind(
@@ -344,12 +355,11 @@ if __name__ == '__main__':
     print 'part seg datatype', sd.dtype
     found = list(numpy.bincount(sd.ravel()).nonzero()[0])
     print 'unique parts seen', ';'.join(
-            ds.name('part', f) for f in found)
+        ds.name('part', f) for f in found)
     fs = ds.resolve_segmentation(ds.metadata(i))
     sd = ds.segmentation_data('object', i)
     print 'object seg datatype', sd.dtype
     found = list(numpy.bincount(sd.ravel()).nonzero()[0])
     print 'unique objects seen', ';'.join(
-            ds.name('object', f) for f in found)
+        ds.name('object', f) for f in found)
     print 'full segmentation', ', '.join(fs.keys())
-

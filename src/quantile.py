@@ -1,5 +1,6 @@
 import numpy
 
+
 class QuantileCounter:
     """
     Streaming randomized quantile computation for numpy.
@@ -20,7 +21,7 @@ class QuantileCounter:
     """
 
     def __init__(self, resolution=32 * 1024, buffersize=None,
-            dtype=None, seed=None):
+                 dtype=None, seed=None):
         self.resolution = resolution
         # Default buffersize: 4096 samples (and smaller than resolution).
         if buffersize is None:
@@ -42,8 +43,9 @@ class QuantileCounter:
         # If we are sampling, then subsample a large chunk at a time.
         chunksize = numpy.ceil[self.buffersize / self.samplerate]
         for index in xrange(0, len(incoming), chunksize):
-            batch = incoming[index:index+chunksize]
-            sample = batch[self.random.binomial(1, self.samplerate, len(batch))]
+            batch = incoming[index:index + chunksize]
+            sample = batch[self.random.binomial(
+                1, self.samplerate, len(batch))]
             self._add_every(sample)
 
     def _add_every(self, incoming):
@@ -56,7 +58,7 @@ class QuantileCounter:
                 if not self._shift():
                     # If we shifted by subsampling, then subsample.
                     incoming = incoming[index:][self.random.binomial(1, 0.5,
-                        len(incoming - index))]
+                                                                     len(incoming - index))]
                     index = 0
                     supplied = len(incoming)
                 ff = self.firstfree[0]
@@ -87,7 +89,7 @@ class QuantileCounter:
         if cap > 0:
             # First, make a new layer of the proper capacity.
             self.data.insert(0,
-                    numpy.empty(shape=cap, dtype=self.data[-1].dtype))
+                             numpy.empty(shape=cap, dtype=self.data[-1].dtype))
             self.firstfree.insert(0, 0)
         else:
             # Unless we're so big we are just subsampling.
@@ -102,7 +104,7 @@ class QuantileCounter:
             if (amount + position) * 2 <= len(self.data[index - 1]):
                 # Move the data down if it would leave things half-empty.
                 self.data[index - 1][position:position + amount] = (
-                        self.data[index][:amount])
+                    self.data[index][:amount])
                 self.firstfree[index - 1] += amount
                 self.firstfree[index] = 0
             else:
@@ -123,7 +125,7 @@ class QuantileCounter:
 
     def quantiles(self, quantiles, old_style=False):
         size = sum(self.firstfree)
-        weights = numpy.empty(shape=size, dtype='float32') # floating point
+        weights = numpy.empty(shape=size, dtype='float32')  # floating point
         summary = numpy.empty(shape=size, dtype=self.data[-1].dtype)
         index = 0
         for level, ff in enumerate(self.firstfree):
@@ -150,7 +152,7 @@ class QuantileCounter:
 
     def readout(self, count, old_style=True):
         return self.quantiles(
-                numpy.linspace(0.0, 1.0, count), old_style=old_style)
+            numpy.linspace(0.0, 1.0, count), old_style=old_style)
 
 
 if __name__ == '__main__':
@@ -168,6 +170,5 @@ if __name__ == '__main__':
     ro = qc.readout(1001)
     # print ro - numpy.linspace(0, amount, percentiles+1)
     print "Maximum relative deviation among %d perentiles:" % percentiles, max(
-            abs(ro - numpy.linspace(0, amount, percentiles+1))
-            / amount) * percentiles
-
+        abs(ro - numpy.linspace(0, amount, percentiles + 1))
+        / amount) * percentiles

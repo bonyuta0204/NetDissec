@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import os, glob
+import os
+import glob
 import re
 import numpy
 from scipy.io import loadmat
@@ -12,16 +13,19 @@ from scipy.ndimage.interpolation import zoom
 ADE_ROOT = '/home/davidbau/bulk/ade20k/'
 ADE_VER = 'ADE20K_2016_07_26'
 
+
 def decodeClassMask(im):
     '''Decodes pixel-level object/part class and instance data from
     the given image, previously encoded into RGB channels.'''
     # Classes are a combination of RG channels (dividing R by 10)
-    return (im[:,:,0] // 10) * 256 + im[:,:,1]
+    return (im[:, :, 0] // 10) * 256 + im[:, :, 1]
+
 
 def decodeInstanceMask(im):
     # Instance number is scattered, so we renumber them
-    (orig, instances) = numpy.unique(im[:,:,2], return_inverse=True)
+    (orig, instances) = numpy.unique(im[:, :, 2], return_inverse=True)
     return instances.reshape(classes.shape)
+
 
 def encodeClassMask(im, offset=0):
     result = numpy.zeros(im.shape + (3,), dtype=numpy.uint8)
@@ -30,9 +34,10 @@ def encodeClassMask(im, offset=0):
         mapped = (im + support) * offset
     else:
         mapped = im
-    result[:,:,1] = mapped % 256
-    result[:,:,0] = (mapped // 256) * 10
+    result[:, :, 1] = mapped % 256
+    result[:, :, 0] = (mapped // 256) * 10
     return result
+
 
 class Dataset:
     def __init__(self, directory=None, version=None):
@@ -57,7 +62,7 @@ class Dataset:
         # for name in index.dtype.names:
         #     setattr(self, name, index[name][()])
         self.index = Ade20kIndex(
-               **{name: index[name][()] for name in index.dtype.names})
+            **{name: index[name][()] for name in index.dtype.names})
         self.raw_mat = mat
 
     def expand(self, *path):
@@ -131,7 +136,8 @@ class Dataset:
         for fn in self.part_filenames(n):
             data = imread(fn)
             if include_instances:
-                result.append((decodeClassMask(data), decodeInstanceMask(data)))
+                result.append(
+                    (decodeClassMask(data), decodeInstanceMask(data)))
             else:
                 result.append(decodeClassMask(data))
         return result
@@ -145,7 +151,7 @@ class Dataset:
                 ] + self.parts(n, include_instances)
         if include_instances:
             return tuple(numpy.concatenate(tuple(m[numpy.newaxis] for m in d)
-                    for d in zip(full)))
+                                           for d in zip(full)))
         return numpy.concatenate(tuple(m[numpy.newaxis] for m in full))
 
     def object_name(self, c):
@@ -180,12 +186,12 @@ class Dataset:
                     width = int(dims[1] / aspect)
                     margin = (width - dims[0]) // 2
                     im = imresize(im, (width, dims[1]))[
-                            margin:margin+dims[0],:,:]
+                        margin:margin + dims[0], :, :]
                 else:
                     height = int(dims[0] * aspect)
                     margin = (height - dims[1]) // 2
                     im = imresize(im, (dims[0], height))[
-                            margin:margin+dims[1],:,:]
+                        margin:margin + dims[1], :, :]
         return im
 
     def scale_segmentation(self, segmentation, dims, crop=False):
@@ -193,9 +199,9 @@ class Dataset:
             return segmentation
         levels = segmentation.shape[0]
         result = numpy.zeros((levels, ) + dims,
-                dtype=segmentation.dtype)
+                             dtype=segmentation.dtype)
         ratio = (1,) + tuple(res / float(orig)
-                for res, orig in zip(result.shape[1:], segmentation.shape[1:]))
+                             for res, orig in zip(result.shape[1:], segmentation.shape[1:]))
         if not crop:
             safezoom(segmentation, ratio, output=result, order=0)
         else:
@@ -204,9 +210,9 @@ class Dataset:
             hmargin = (segmentation.shape[0] - height) // 2
             width = int(round(dims[1] / ratio))
             wmargin = (segmentation.shape[1] - height) // 2
-            safezoom(segmentation[:, hmargin:hmargin+height,
-                wmargin:wmargin+width],
-                (1, ratio, ratio), output=result, order=0)
+            safezoom(segmentation[:, hmargin:hmargin + height,
+                                  wmargin:wmargin + width],
+                     (1, ratio, ratio), output=result, order=0)
         return result
 
     def save_image(self, im, filename, folder):
@@ -222,7 +228,7 @@ class Dataset:
             imsave(os.path.join(folder, fn), im)
 
     def save_sample(self, folder, size=None, indexes=None, crop=False,
-            offset=0, reduction=1, progress=False):
+                    offset=0, reduction=1, progress=False):
         if indexes is None:
             indexes = range(self.size())
         count = len(indexes)
@@ -247,6 +253,7 @@ class Dataset:
             for index in range(offset, self.num_object_types()):
                 f.write('%s\t%d\n' % (self.object_name(index), index - offset))
 
+
 def safezoom(array, ratio, output=None, order=0):
     '''Like numpy.zoom, but does not crash when the first dimension
     of the array is of size 1, as happens often with segmentations'''
@@ -255,9 +262,9 @@ def safezoom(array, ratio, output=None, order=0):
         array = array.astype(numpy.float32)
     if array.shape[0] == 1:
         if output is not None:
-            output = output[0,...]
-        result = zoom(array[0,...], ratio[1:],
-                output=output, order=order)
+            output = output[0, ...]
+        result = zoom(array[0, ...], ratio[1:],
+                      output=output, order=order)
         if output is None:
             output = result[numpy.newaxis]
     else:
@@ -265,5 +272,3 @@ def safezoom(array, ratio, output=None, order=0):
         if output is None:
             output = result
     return output.astype(dtype)
-
-

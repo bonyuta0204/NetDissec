@@ -7,6 +7,7 @@ from tempfile import NamedTemporaryFile
 # Also http://home.lu.lv/~sd20008/papers/essays/Random%20unitary%20[paper].pdf
 # Equation 35
 
+
 def randomRotation(n, seed=None):
     if seed is None:
         NR = numpy.random.normal(size=(n, n))
@@ -24,6 +25,7 @@ def randomRotation(n, seed=None):
         result[0] = -result[0]
     return result
 
+
 def randomRotationPowers(n, powers, seed=None):
     RR = randomRotation(n, seed)
     # Reduce the matrix to canonical (block-diag) form using schur decomp
@@ -40,10 +42,12 @@ def randomRotationPowers(n, powers, seed=None):
     result = []
     for p in powers:
         A = [a * p for a in RA]
-        B = [numpy.cos([[a, a + numpy.pi/2], [a - numpy.pi/2, a]]) for a in A]
+        B = [numpy.cos([[a, a + numpy.pi / 2], [a - numpy.pi / 2, a]])
+             for a in A]
         BD = scipy.linalg.block_diag(*B)
         result.append(numpy.dot(numpy.dot(W, BD), W.transpose()))
     return result
+
 
 def randomNearIdentity(n, scale, seed=None):
     if numpy.isinf(scale):
@@ -56,15 +60,18 @@ def randomNearIdentity(n, scale, seed=None):
     U, _, V = numpy.linalg.svd(numpy.eye(n) + RR)
     return numpy.dot(U, V)
 
+
 def deviation(rotation):
     return numpy.linalg.norm(rotation - numpy.eye(len(rotation)), 2)
+
 
 def temparray_like(arr):
     fs = NamedTemporaryFile()
     result = numpy.memmap(fs.name, dtype=arr.dtype, mode='w+',
-        shape=arr.shape)
+                          shape=arr.shape)
     fs.close()
     return result
+
 
 if __name__ == '__main__':
     from scipy.io import loadmat, savemat

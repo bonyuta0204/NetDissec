@@ -46,7 +46,7 @@ Input:
 
 Output is the following directory structure:
 '''
-README_TEXT= '''
+README_TEXT = '''
 This directory contains the following data and metadata files:
 
     images/[datasource]/...
@@ -133,8 +133,8 @@ from unicsv import DictUnicodeWriter
 
 
 def unify(data_sets, directory, size=None, segmentation_size=None, crop=False,
-        splits=None, min_frequency=None, min_coverage=None,
-        synonyms=None, test_limit=None, single_process=False, verbose=False):
+          splits=None, min_frequency=None, min_coverage=None,
+          synonyms=None, test_limit=None, single_process=False, verbose=False):
     # Make sure we have a directory to work in
     directory = os.path.expanduser(directory)
     ensure_dir(directory)
@@ -161,39 +161,41 @@ def unify(data_sets, directory, size=None, segmentation_size=None, crop=False,
     # frequency = number of images touched by each label
     # coverage  = total portion of images covered by each label
     frequency, coverage = gather_label_statistics(
-            data_sets, test_limit, single_process,
-            segmentation_size, crop, verbose)
+        data_sets, test_limit, single_process,
+        segmentation_size, crop, verbose)
     # Phase 2: Sort, collapse, and filter labels
     labnames, syns = normalize_labels(data_sets, frequency, coverage, synonyms)
     report_aliases(directory, labnames, data_sets, frequency, verbose)
     # Phase 3: Filter by frequncy, and assign numbers
     names, assignments = assign_labels(
-            labnames, frequency, coverage, min_frequency, min_coverage, verbose)
+        labnames, frequency, coverage, min_frequency, min_coverage, verbose)
     # Phase 4: Collate and output label stats
     cats = write_label_files(
-            directory, names, assignments, frequency, coverage, syns, verbose)
+        directory, names, assignments, frequency, coverage, syns, verbose)
     # Phase 5: Create normalized segmentation files
     create_segmentations(
-            directory, data_sets, splits, assignments, size, segmentation_size,
-            crop, cats, test_limit, single_process, verbose)
+        directory, data_sets, splits, assignments, size, segmentation_size,
+        crop, cats, test_limit, single_process, verbose)
+
 
 def gather_label_statistics(data_sets, test_limit, single_process,
-        segmentation_size, crop, verbose):
+                            segmentation_size, crop, verbose):
     '''
     Phase 1 of unification.  Counts label statistics.
     '''
     # Count frequency and coverage for each individual image
     stats = map_in_pool(partial(count_label_statistics,
-        segmentation_size=segmentation_size,
-        crop=crop,
-        verbose=verbose),
-            all_dataset_segmentations(data_sets, test_limit),
-            single_process=single_process,
-            verbose=verbose)
+                                segmentation_size=segmentation_size,
+                                crop=crop,
+                                verbose=verbose),
+                        all_dataset_segmentations(data_sets, test_limit),
+                        single_process=single_process,
+                        verbose=verbose)
     # Add them up
     frequency, coverage = (sum_histogram(d) for d in zip(*stats))
     # TODO: also, blacklist images that have insufficient labled pixels
     return frequency, coverage
+
 
 def normalize_labels(data_sets, frequency, coverage, synonyms):
     '''
@@ -207,7 +209,7 @@ def normalize_labels(data_sets, frequency, coverage, synonyms):
     for lab in freq_items:
         dataset, category, label = lab
         names = [n.lower() for n in data_sets[dataset].all_names(
-              category, label) if len(n) and n != '-']
+            category, label) if len(n) and n != '-']
         if synonyms:
             names = synonyms(names)
         # Claim the synonyms that have not already been taken
@@ -217,8 +219,9 @@ def normalize_labels(data_sets, frequency, coverage, synonyms):
         # best_labname may decide to collapse two labels because they
         # have the same names and seem to mean the same thing
         labname[lab], unique = best_labname(
-                lab, names, labname, top_syns, coverage, frequency)
+            lab, names, labname, top_syns, coverage, frequency)
     return labname, top_syns
+
 
 def report_aliases(directory, labnames, data_sets, frequency, verbose):
     '''
@@ -233,7 +236,7 @@ def report_aliases(directory, labnames, data_sets, frequency, verbose):
             if verbose:
                 print txt
         for name in sorted(name_to_lab.keys(),
-                key=lambda n: (-len(name_to_lab[n]), n)):
+                           key=lambda n: (-len(name_to_lab[n]), n)):
             keys = name_to_lab[name]
             if not show_all and len(keys) <= 1:
                 break
@@ -244,9 +247,10 @@ def report_aliases(directory, labnames, data_sets, frequency, verbose):
             report('name: %s' % name)
             for ds, cat, i in keys:
                 names = ';'.join(data_sets[ds].all_names(cat, i))
-                freq = frequency[(ds, cat ,i)]
+                freq = frequency[(ds, cat, i)]
                 report('%s/%s#%d: %d, (%s)' % (ds, cat, i, freq, names))
             report('')
+
 
 def assign_labels(
         labnames, frequency, coverage, min_frequency, min_coverage, verbose):
@@ -265,10 +269,11 @@ def assign_labels(
     # Put '-' at zero
     names = [n for n in names if n != '-']
     names = ['-'] + sorted(names,
-            key=lambda x: (-name_frequency[x], -name_coverage[x]))
+                           key=lambda x: (-name_frequency[x], -name_coverage[x]))
     nums = dict((n, i) for i, n in enumerate(names))
     assignments = dict((k, nums.get(v, 0)) for k, v in labnames.items())
     return names, assignments
+
 
 def write_label_files(
         directory, names, assignments, frequency, coverage, syns, verbose):
@@ -277,7 +282,8 @@ def write_label_files(
     Collate some stats and then write then to two metadata files.
     '''
     # Make lists of synonyms claimed by each label
-    synmap = invert_dict(dict((w, assignments[lab]) for w, lab in syns.items()))
+    synmap = invert_dict(
+        dict((w, assignments[lab]) for w, lab in syns.items()))
     # We need an (index, category) count
     ic_freq = join_histogram_fn(frequency, lambda x: (assignments[x], x[1]))
     ic_cov = join_histogram_fn(coverage, lambda x: (assignments[x], x[1]))
@@ -290,7 +296,8 @@ def write_label_files(
         catstats[ind].append((cat, f))
     index_coverage = join_histogram(coverage, assignments)
     with open(os.path.join(directory, 'label.csv'), 'w') as csvfile:
-        fields = ['number', 'name', 'category', 'frequency', 'coverage', 'syns']
+        fields = ['number', 'name', 'category',
+                  'frequency', 'coverage', 'syns']
         writer = DictUnicodeWriter(csvfile, fieldnames=fields)
         writer.writeheader()
         for ind, name in enumerate(names):
@@ -325,7 +332,7 @@ def write_label_files(
     # And for each category, create a dense coding file.
     for cat in cats:
         dense_code = [0] + sorted([i for i, c in ic_freq if c == cat],
-                key=lambda i: (-ic_freq[(i, cat)], -ic_cov[(i, cat)]))
+                                  key=lambda i: (-ic_freq[(i, cat)], -ic_cov[(i, cat)]))
         fields = ['code', 'number', 'name', 'frequency', 'coverage']
         with open(os.path.join(directory, 'c_%s.csv' % cat), 'w') as csvfile:
             writer = DictUnicodeWriter(csvfile, fieldnames=fields)
@@ -341,8 +348,9 @@ def write_label_files(
                     coverage=ic_cov[(i, cat)]))
     return cats
 
+
 def create_segmentations(directory, data_sets, splits, assignments, size,
-        segmentation_size, crop, cats, test_limit, single_process, verbose):
+                         segmentation_size, crop, cats, test_limit, single_process, verbose):
     '''
     Phase 5 of unification.  Create the normalized segmentation files
     '''
@@ -351,14 +359,14 @@ def create_segmentations(directory, data_sets, splits, assignments, size,
     # Get assignments into a nice form, once, here.
     # (dataset, category): [numpy array with new indexes]
     index_max = build_histogram(
-            [((ds, cat), i) for ds, cat, i in assignments.keys()], max)
+        [((ds, cat), i) for ds, cat, i in assignments.keys()], max)
     index_mapping = dict([k, numpy.zeros(i + 1, dtype=numpy.int16)]
-            for k, i in index_max.items())
+                         for k, i in index_max.items())
     for (ds, cat, oldindex), newindex in assignments.items():
         index_mapping[(ds, cat)][oldindex] = newindex
     # Count frequency and coverage for each individual image
     segmented = map_in_pool(
-            partial(translate_segmentation,
+        partial(translate_segmentation,
                 directory=directory,
                 mapping=index_mapping,
                 size=size,
@@ -366,9 +374,9 @@ def create_segmentations(directory, data_sets, splits, assignments, size,
                 categories=cats,
                 crop=crop,
                 verbose=verbose),
-            all_dataset_segmentations(data_sets, test_limit),
-            single_process=single_process,
-            verbose=verbose)
+        all_dataset_segmentations(data_sets, test_limit),
+        single_process=single_process,
+        verbose=verbose)
     # Sort nonempty itesm randomly+reproducibly by md5 hash of the filename.
     ordered = sorted([(hashed_float(r['image']), r) for r in segmented if r])
     # Assign splits, pullout out last 20% for validation.
@@ -389,8 +397,9 @@ def create_segmentations(directory, data_sets, splits, assignments, size,
         for f, record in ordered:
             writer.writerow(record)
 
+
 def translate_segmentation(record, directory, mapping, size,
-        segmentation_size, categories, crop, verbose):
+                           segmentation_size, categories, crop, verbose):
     '''
     Translates a single segmentation.
     '''
@@ -407,10 +416,10 @@ def translate_segmentation(record, directory, mapping, size,
         jpg = scale_image(jpg, size, crop)
         for cat in full_seg:
             full_seg[cat] = scale_segmentation(
-                    full_seg[cat], segmentation_size, crop)
+                full_seg[cat], segmentation_size, crop)
     else:
         size = jpg.shape[:2]
-        segmentation_size = (1,1)
+        segmentation_size = (1, 1)
         for cat in full_seg:
             if len(numpy.shape(full_seg[cat])) >= 2:
                 segmentation_size = numpy.shape(full_seg[cat])
@@ -420,18 +429,19 @@ def translate_segmentation(record, directory, mapping, size,
     ensure_dir(os.path.join(imagedir, dataset))
     fn = save_image(jpg, imagedir, dataset, basename)
     result = {
-            'image': os.path.join(dataset, fn),
-            'ih': size[0],
-            'iw': size[1],
-            'sh': segmentation_size[0],
-            'sw': segmentation_size[1]
+        'image': os.path.join(dataset, fn),
+        'ih': size[0],
+        'iw': size[1],
+        'sh': segmentation_size[0],
+        'sw': segmentation_size[1]
     }
     for cat in full_seg:
         if cat not in categories:
             continue  # skip categories with no data globally
         result[cat] = ';'.join(save_segmentation(full_seg[cat],
-                imagedir, dataset, fn, cat, mapping[(dataset, cat)]))
+                                                 imagedir, dataset, fn, cat, mapping[(dataset, cat)]))
     return result
+
 
 def best_labname(lab, names, assignments, top_syns, coverage, frequency):
     '''
@@ -466,6 +476,7 @@ def best_labname(lab, names, assignments, top_syns, coverage, frequency):
     name = assignments[other]
     return name, False
 
+
 def build_histogram(pairs, reducer=operator.add):
     '''Creates a histogram by combining a list of key-value pairs.'''
     result = {}
@@ -475,6 +486,7 @@ def build_histogram(pairs, reducer=operator.add):
         else:
             result[k] = reducer(result[k], v)
     return result
+
 
 def join_histogram_fn(histogram, makekey):
     '''Rekeys histogram according to makekey fn, summing joined buckets.'''
@@ -487,6 +499,7 @@ def join_histogram_fn(histogram, makekey):
             result[newkey] += val
     return result
 
+
 def join_histogram(histogram, newkeys):
     '''Rekeys histogram according to newkeys map, summing joined buckets.'''
     result = {}
@@ -496,6 +509,7 @@ def join_histogram(histogram, newkeys):
         else:
             result[newkey] += histogram[oldkey]
     return result
+
 
 def sum_histogram(histogram_list):
     '''Adds histogram dictionaries elementwise.'''
@@ -508,6 +522,7 @@ def sum_histogram(histogram_list):
                 result[k] += v
     return result
 
+
 def invert_dict(d):
     '''Transforms {k: v} to {v: [k,k..]}'''
     result = {}
@@ -517,6 +532,7 @@ def invert_dict(d):
         else:
             result[v].append(k)
     return result
+
 
 def count_label_statistics(record, segmentation_size, crop, verbose):
     '''
@@ -553,6 +569,7 @@ def count_label_statistics(record, segmentation_size, crop, verbose):
                     coverage[key] = float(bc[label]) / pixels
     return freq, coverage
 
+
 def all_dataset_segmentations(data_sets, test_limit=None):
     '''
     Returns an iterator for metadata over all segmentations
@@ -565,6 +582,7 @@ def all_dataset_segmentations(data_sets, test_limit=None):
             yield (name, j, ds.__class__, ds.filename(i), ds.metadata(i))
             j += 1
 
+
 def truncate_range(data, limit):
     '''For testing, if limit is not None, limits data by slicing it.'''
     if limit is None:
@@ -572,6 +590,7 @@ def truncate_range(data, limit):
     if isinstance(limit, slice):
         return data[limit]
     return data[:limit]
+
 
 def map_in_pool(fn, data, single_process=False, verbose=False):
     '''
@@ -596,8 +615,10 @@ def map_in_pool(fn, data, single_process=False, verbose=False):
         pool.close()
         pool.join()
 
+
 def setup_sigint():
     return signal.signal(signal.SIGINT, signal.SIG_IGN)
+
 
 def restore_sigint(original):
     signal.signal(signal.SIGINT, original)
@@ -620,13 +641,14 @@ def scale_image(im, dims, crop=False):
                 width = int(dims[1] / aspect)
                 margin = (width - dims[0]) // 2
                 im = imresize(im, (width, dims[1]))[
-                        margin:margin+dims[0],:,:]
+                    margin:margin + dims[0], :, :]
             else:
                 height = int(dims[0] * aspect)
                 margin = (height - dims[1]) // 2
                 im = imresize(im, (dims[0], height))[
-                        margin:margin+dims[1],:,:]
+                    margin:margin + dims[1], :, :]
     return im
+
 
 def scale_segmentation(segmentation, dims, crop=False):
     '''
@@ -640,9 +662,9 @@ def scale_segmentation(segmentation, dims, crop=False):
         segmentation = segmentation[numpy.newaxis]
     levels = segmentation.shape[0]
     result = numpy.zeros((levels, ) + dims,
-            dtype=segmentation.dtype)
+                         dtype=segmentation.dtype)
     ratio = (1,) + tuple(res / float(orig)
-            for res, orig in zip(result.shape[1:], segmentation.shape[1:]))
+                         for res, orig in zip(result.shape[1:], segmentation.shape[1:]))
     if not crop:
         safezoom(segmentation, ratio, output=result, order=0)
     else:
@@ -651,12 +673,13 @@ def scale_segmentation(segmentation, dims, crop=False):
         hmargin = (segmentation.shape[0] - height) // 2
         width = int(round(dims[1] / ratio))
         wmargin = (segmentation.shape[1] - height) // 2
-        safezoom(segmentation[:, hmargin:hmargin+height,
-            wmargin:wmargin+width],
-            (1, ratio, ratio), output=result, order=0)
+        safezoom(segmentation[:, hmargin:hmargin + height,
+                              wmargin:wmargin + width],
+                 (1, ratio, ratio), output=result, order=0)
     if peel:
         result = result[0]
     return result
+
 
 def safezoom(array, ratio, output=None, order=0):
     '''Like numpy.zoom, but does not crash when the first dimension
@@ -666,9 +689,9 @@ def safezoom(array, ratio, output=None, order=0):
         array = array.astype(numpy.float32)
     if array.shape[0] == 1:
         if output is not None:
-            output = output[0,...]
-        result = zoom(array[0,...], ratio[1:],
-                output=output, order=order)
+            output = output[0, ...]
+        result = zoom(array[0, ...], ratio[1:],
+                      output=output, order=order)
         if output is None:
             output = result[numpy.newaxis]
     else:
@@ -676,6 +699,7 @@ def safezoom(array, ratio, output=None, order=0):
         if output is None:
             output = result
     return output.astype(dtype)
+
 
 def save_image(im, imagedir, dataset, filename):
     '''
@@ -689,6 +713,7 @@ def save_image(im, imagedir, dataset, filename):
         fn = re.sub('(?:\.jpg)?$', '%d.jpg' % trynum, filename)
     imsave(os.path.join(imagedir, dataset, fn), im)
     return fn
+
 
 def save_segmentation(seg, imagedir, dataset, filename, category, translation):
     '''
@@ -712,17 +737,19 @@ def save_segmentation(seg, imagedir, dataset, filename, category, translation):
             fn = re.sub('(?:\.jpg)?$', '_%s.png' % category, filename)
         else:
             fn = re.sub('(?:\.jpg)?$', '_%s_%d.png' %
-                    (category, channel + 1), filename)
+                        (category, channel + 1), filename)
         result.append(os.path.join(dataset, fn))
         imsave(os.path.join(imagedir, dataset, fn), im)
     return result
 
+
 def encodeRG(channel):
     '''Encodes a 16-bit per-pixel code using the red and green channels.'''
     result = numpy.zeros(channel.shape + (3,), dtype=numpy.uint8)
-    result[:,:,0] = channel % 256
-    result[:,:,1] = (channel // 256)
+    result[:, :, 0] = channel % 256
+    result[:, :, 1] = (channel // 256)
     return result
+
 
 def ensure_dir(targetdir):
     if not os.path.isdir(targetdir):
@@ -731,12 +758,15 @@ def ensure_dir(targetdir):
         except:
             pass
 
+
 def hashed_float(s):
     # Inspired by http://code.activestate.com/recipes/391413/ by Ori Peleg
     '''Hashes a string to a float in the range [0, 1).'''
-    import md5, struct
+    import md5
+    import struct
     [number] = struct.unpack(">Q", md5.new(s).digest()[:8])
     return number / (2.0 ** 64)  # python will constant-fold this denominator.
+
 
 def cumulative_splits(splits):
     '''Converts [0.8, 0.1, 0.1] to [0.8, 0.9, 1.0]'''
@@ -753,6 +783,7 @@ def cumulative_splits(splits):
             repr(splits), result[-1][1]))
     result[-1] = (result[-1][0], 1.0)
     return result
+
 
 def write_readme_file(args, directory, verbose):
     '''
@@ -782,6 +813,7 @@ def write_readme_file(args, directory, verbose):
         # Add boilerplate readme text
         f.write(README_TEXT)
 
+
 if __name__ == '__main__':
     import argparse
     import adeseg
@@ -793,9 +825,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Generate broden dataset.')
     parser.add_argument(
-            '--size',
-            type=int, default=224,
-            help='pixel size for input images, e.g., 224 or 227')
+        '--size',
+        type=int, default=224,
+        help='pixel size for input images, e.g., 224 or 227')
     args = parser.parse_args()
 
     image_size = (args.size, args.size)
@@ -807,15 +839,15 @@ if __name__ == '__main__':
     dtd = dtdseg.DtdSegmentation('dataset/dtd/dtd-r1.0.1')
     # OpenSurfaces is not balanced in scene and object types.
     oss = osseg.OpenSurfaceSegmentation('dataset/opensurfaces/',
-            supply=set(['material', 'color']))
+                                        supply=set(['material', 'color']))
     # Remove distinction between upper-arm, lower-arm, etc.
     pascal = pascalseg.PascalSegmentation('dataset/pascal/',
-            collapse_adjectives=set([
-                'left', 'right', 'front', 'back', 'upper', 'lower', 'side']))
+                                          collapse_adjectives=set([
+                                              'left', 'right', 'front', 'back', 'upper', 'lower', 'side']))
     data = OrderedDict(ade20k=ade, dtd=dtd, opensurfaces=oss, pascal=pascal)
     unify(data,
-            splits=OrderedDict(train=0.7, val=0.3),
-            size=image_size, segmentation_size=seg_size,
-            directory=('dataset/broden1_%d' % args.size),
-            synonyms=synonyms,
-            min_frequency=10, min_coverage=0.5, verbose=True)
+          splits=OrderedDict(train=0.7, val=0.3),
+          size=image_size, segmentation_size=seg_size,
+          directory=('dataset/broden1_%d' % args.size),
+          synonyms=synonyms,
+          min_frequency=10, min_coverage=0.5, verbose=True)

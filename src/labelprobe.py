@@ -31,23 +31,28 @@ import intersect
 # confusion).  This does not work that well, so we do not tally these.
 COUNT_CAT_INTERSECTIONS = False
 
+
 class NoDaemonProcess(multiprocessing.Process):
     # make 'daemon' attribute always return False
     def _get_daemon(self):
         return False
+
     def _set_daemon(self, value):
         pass
     daemon = property(_get_daemon, _set_daemon)
 
 # We sub-class multiprocessing.pool.Pool instead of multiprocessing.Pool
 # because the latter is only a wrapper function, not a proper class.
+
+
 class NoDaemonPool(multiprocessing.pool.Pool):
     Process = NoDaemonProcess
 
+
 def label_probe(directory, blob,
-        batch_size=5, ahead=4, tally_depth=2048,
-        quantile=0.01, categories=None, verbose=False,
-        parallel=0):
+                batch_size=5, ahead=4, tally_depth=2048,
+                quantile=0.01, categories=None, verbose=False,
+                parallel=0):
     '''
     Evaluates the given blob from the probe stored in the given directory.
     Note that as part of the evaluation, the dataset is loaded again.
@@ -59,7 +64,7 @@ def label_probe(directory, blob,
     if ed.has_mmap(blob=blob, part='tally-%s' % qcode):
         if verbose:
             print 'Have', (ed.mmap_filename(blob=blob, part='tally-%s' % qcode)
-                    ), 'already. Skipping.'
+                           ), 'already. Skipping.'
         return
     # Load probe metadata
     info = ed.load_info()
@@ -71,7 +76,7 @@ def label_probe(directory, blob,
     fieldmap = blob_info.fieldmap
     # Load the blob quantile data and grab thresholds
     quantdata = ed.open_mmap(blob=blob, part='quant-*',
-            shape=(shape[1], -1))
+                             shape=(shape[1], -1))
     threshold = quantdata[:, int(round(quantdata.shape[1] * quantile))]
     thresh = threshold[:, numpy.newaxis, numpy.newaxis]
     # Map the blob activation data for reading
@@ -82,7 +87,7 @@ def label_probe(directory, blob,
         categories = ds.category_names()
     labelcat = onehot(primary_categories_per_index(ds, categories))
     # Be sure to zero out the background label - it belongs to no category.
-    labelcat[0,:] = 0
+    labelcat[0, :] = 0
     # Set up output data
     # G = ground truth counts
     # A = activation counts
@@ -91,30 +96,31 @@ def label_probe(directory, blob,
     # fn_s = os.path.join(directory, '%s-%s-scores.txt' % (blob, qcode))
     # T = tally, a compressed per-sample record of intersection counts.
     fn_t = ed.mmap_filename(blob=blob, part='tally-%s' % qcode,
-            inc=True)
+                            inc=True)
     # Create the file so that it can be mapped 'r+'
     ed.open_mmap(blob=blob, part='tally-%s' % qcode, mode='w+',
-            dtype='int32', shape=(ds.size(), tally_depth, 3))
+                 dtype='int32', shape=(ds.size(), tally_depth, 3))
     if parallel > 1:
         fast_process(fn_t, fn_read, shape, tally_depth, ds, iw, ih,
-                categories, fieldmap,
-                thresh, labelcat, batch_size, ahead, verbose, parallel)
+                     categories, fieldmap,
+                     thresh, labelcat, batch_size, ahead, verbose, parallel)
     else:
         process_data(fn_t, fn_read, shape, tally_depth, ds, iw, ih,
-                categories, fieldmap,
-                thresh, labelcat, batch_size, ahead, verbose, False,
-                0, ds.size())
+                     categories, fieldmap,
+                     thresh, labelcat, batch_size, ahead, verbose, False,
+                     0, ds.size())
     fn_final = re.sub('-inc$', '', fn_t)
     if verbose:
         print 'Renaming', fn_t, 'to', fn_final
     os.rename(fn_t, fn_final)
 
+
 def fast_process(fn_t, fn_read, shape, tally_depth, ds, iw, ih,
-        categories, fieldmap,
-        thresh, labelcat, batch_size, ahead, verbose, parallel):
+                 categories, fieldmap,
+                 thresh, labelcat, batch_size, ahead, verbose, parallel):
     psize = int(numpy.ceil(float(ds.size()) / parallel))
     ranges = [(s, min(ds.size(), s + psize))
-            for s in range(0, ds.size(), psize) if s < ds.size()]
+              for s in range(0, ds.size(), psize) if s < ds.size()]
     parallel = len(ranges)
     original_sigint_handler = setup_sigint()
     # pool = multiprocessing.Pool(processes=parallel, initializer=setup_sigint)
@@ -122,9 +128,9 @@ def fast_process(fn_t, fn_read, shape, tally_depth, ds, iw, ih,
     restore_sigint(original_sigint_handler)
     # Precache memmaped files
     blobdata = cached_memmap(fn_read, mode='r', dtype='float32',
-            shape=shape)
+                             shape=shape)
     count_t = cached_memmap(fn_t, mode='r+', dtype='int32',
-        shape=(ds.size(), tally_depth, 3))
+                            shape=(ds.size(), tally_depth, 3))
     data = [
         (fn_t, fn_read, shape, tally_depth, ds, iw, ih, categories, fieldmap,
             thresh, labelcat, batch_size, ahead, verbose, True) + r
@@ -140,34 +146,38 @@ def fast_process(fn_t, fn_read, shape, tally_depth, ds, iw, ih,
         pool.close()
     pool.join()
 
+
 def individual_process(args):
     process_data(*args)
 
+
 global_memmap_cache = {}
+
 
 def cached_memmap(fn, mode, dtype, shape):
     global global_memmap_cache
     if fn not in global_memmap_cache:
         global_memmap_cache[fn] = numpy.memmap(
-                fn, mode=mode, dtype=dtype, shape=shape)
+            fn, mode=mode, dtype=dtype, shape=shape)
     return global_memmap_cache[fn]
 
+
 def process_data(fn_t, fn_read, shape, tally_depth, ds, iw, ih,
-        categories, fieldmap,
-        thresh, labelcat, batch_size, ahead, verbose, thread,
-        start, end):
+                 categories, fieldmap,
+                 thresh, labelcat, batch_size, ahead, verbose, thread,
+                 start, end):
     unit_size = len(thresh)
     blobdata = cached_memmap(fn_read, mode='r', dtype='float32',
-            shape=shape)
+                             shape=shape)
     count_t = cached_memmap(fn_t, mode='r+', dtype='int32',
-        shape=(ds.size(), tally_depth, 3))
+                            shape=(ds.size(), tally_depth, 3))
     count_t[...] = 0
     # The main loop
     if verbose:
-         print 'Beginning work for evaluating', blob
+        print 'Beginning work for evaluating', blob
     pf = loadseg.SegmentationPrefetcher(ds, categories=categories,
-            start=start, end=end, once=True,
-            batch_size=batch_size, ahead=ahead, thread=False)
+                                        start=start, end=end, once=True,
+                                        batch_size=batch_size, ahead=ahead, thread=False)
     index = start
     start_time = time.time()
     last_batch_time = start_time
@@ -184,17 +194,18 @@ def process_data(fn_t, fn_read, shape, tally_depth, ds, iw, ih,
             sw, sh = [rec[k] for k in ['sw', 'sh']]
             reduction = int(round(iw / float(sw)))
             up = upsample.upsampleL(fieldmap, blobdata[index],
-                    shape=(sh,sw), reduction=reduction)
+                                    shape=(sh, sw), reduction=reduction)
             mask = up > thresh
             accumulate_counts(
-                    mask,
-                    [rec[cat] for cat in categories],
-                    count_t[index],
-                    unit_size,
-                    labelcat)
+                mask,
+                [rec[cat] for cat in categories],
+                count_t[index],
+                unit_size,
+                labelcat)
             index += 1
         batch_size = len(batch)
     count_t.flush()
+
 
 def accumulate_counts(masks, label_list, tally_i, unit_size, labelcat):
     '''
@@ -222,6 +233,7 @@ def accumulate_counts(masks, label_list, tally_i, unit_size, labelcat):
         numpy.concatenate(scalars) if scalars else numpy.array([], dtype=int))
     intersect.tallyMaskLabel(masks, labels, out=tally_i)
 
+
 def primary_categories_per_index(ds, categories):
     '''
     Returns an array of primary category numbers for each label, where the
@@ -237,10 +249,11 @@ def primary_categories_per_index(ds, categories):
     result = []
     for i in range(ds.label_size(None)):
         maxcov, maxcat = max(
-                (ds.coverage(cat, catmap[cat][i]) if catmap[cat][i] else 0, ic)
-                for ic, cat in enumerate(categories))
+            (ds.coverage(cat, catmap[cat][i]) if catmap[cat][i] else 0, ic)
+            for ic, cat in enumerate(categories))
         result.append(maxcat)
     return numpy.array(result)
+
 
 def onehot(arr, minlength=None):
     '''
@@ -256,13 +269,16 @@ def onehot(arr, minlength=None):
     result[list(numpy.indices(arr.shape)) + [arr]] = 1
     return result
 
+
 def setup_sigint():
     return signal.signal(signal.SIGINT, signal.SIG_IGN)
+
 
 def restore_sigint(original):
     if original is None:
         original = signal.SIG_DFL
     signal.signal(signal.SIGINT, original)
+
 
 if __name__ == '__main__':
     import argparse
@@ -273,39 +289,39 @@ if __name__ == '__main__':
         parser = argparse.ArgumentParser(
             description='Generate evaluation files for probed activation data.')
         parser.add_argument(
-                '--directory',
-                default='.',
-                help='output directory for the net probe')
+            '--directory',
+            default='.',
+            help='output directory for the net probe')
         parser.add_argument(
-                '--blobs',
-                nargs='*',
-                help='network blob names to tally')
+            '--blobs',
+            nargs='*',
+            help='network blob names to tally')
         parser.add_argument(
-                '--batch_size',
-                type=int, default=5,
-                help='the batch size to use')
+            '--batch_size',
+            type=int, default=5,
+            help='the batch size to use')
         parser.add_argument(
-                '--ahead',
-                type=int, default=4,
-                help='the prefetch lookahead size')
+            '--ahead',
+            type=int, default=4,
+            help='the prefetch lookahead size')
         parser.add_argument(
-                '--quantile',
-                type=float, default=0.01,
-                help='the quantile cutoff to use')
+            '--quantile',
+            type=float, default=0.01,
+            help='the quantile cutoff to use')
         parser.add_argument(
-                '--tally_depth',
-                type=int, default=2048,
-                help='the number of top label counts to tally for each sample')
+            '--tally_depth',
+            type=int, default=2048,
+            help='the number of top label counts to tally for each sample')
         parser.add_argument(
-                '--parallel',
-                type=int, default=0,
-                help='the number of parallel processes to apply')
+            '--parallel',
+            type=int, default=0,
+            help='the number of parallel processes to apply')
         args = parser.parse_args()
         for blob in args.blobs:
             label_probe(args.directory, blob, batch_size=args.batch_size,
-                    ahead=args.ahead, quantile=args.quantile,
-                    tally_depth=args.tally_depth, verbose=True,
-                    parallel=args.parallel)
+                        ahead=args.ahead, quantile=args.quantile,
+                        tally_depth=args.tally_depth, verbose=True,
+                        parallel=args.parallel)
     except:
         traceback.print_exc(file=sys.stdout)
         sys.exit(1)

@@ -37,6 +37,7 @@ def loadviz(directory, blob):
             result[unit] = u_result
     return result
 
+
 def summarize(scores, threshold, top_only=True):
     result = defaultdict(float)
     denom = len(scores)
@@ -53,6 +54,7 @@ def summarize(scores, threshold, top_only=True):
             result['total'] += 1.0 / denom
     return result
 
+
 if __name__ == '__main__':
     import argparse
     import sys
@@ -63,61 +65,60 @@ if __name__ == '__main__':
         matplotlib.use('Agg')
         import matplotlib.pyplot as plt
 
-
         parser = argparse.ArgumentParser(
             description='Generate visualization for probed activation data.')
         parser.add_argument(
-                '--directories',
-                nargs='*',
-                help='directories to graph')
+            '--directories',
+            nargs='*',
+            help='directories to graph')
         parser.add_argument(
-                '--blobs',
-                nargs='*',
-                help='blobs to graph')
+            '--blobs',
+            nargs='*',
+            help='blobs to graph')
         parser.add_argument(
-                '--threshold',
-                type=float, default=0.05,
-                help='score above which to count items')
+            '--threshold',
+            type=float, default=0.05,
+            help='score above which to count items')
         parser.add_argument(
-                '--top_only',
-                type=lambda s: s.lower() in ['true', 't', 'yes', '1'],
-                default=True,
-                help='include only the top values')
+            '--top_only',
+            type=lambda s: s.lower() in ['true', 't', 'yes', '1'],
+            default=True,
+            help='include only the top values')
         parser.add_argument(
-                '--include_total',
-                type=lambda s: s.lower() in ['true', 't', 'yes', '1'],
-                default=False,
-                help='include total value line')
+            '--include_total',
+            type=lambda s: s.lower() in ['true', 't', 'yes', '1'],
+            default=False,
+            help='include total value line')
         parser.add_argument(
-                '--labels',
-                nargs='*',
-                help='tick labels')
+            '--labels',
+            nargs='*',
+            help='tick labels')
         parser.add_argument(
-                '--title',
-                help='graph title')
+            '--title',
+            help='graph title')
         parser.add_argument(
-                '--legend',
-                default='upper right',
-                help='location of legend')
+            '--legend',
+            default='upper right',
+            help='location of legend')
         parser.add_argument(
-                '--maxy',
-                type=float, default=None,
-                help='y axis range to apply')
+            '--maxy',
+            type=float, default=None,
+            help='y axis range to apply')
         parser.add_argument(
-                '--out',
-                help='output filename for graph')
+            '--out',
+            help='output filename for graph')
         args = parser.parse_args()
         data = []
         categories = set(category_colors.keys())
         for directory in args.directories:
             for blob in args.blobs:
                 stats = summarize(loadviz(directory, blob), args.threshold,
-                        top_only=args.top_only)
+                                  top_only=args.top_only)
                 data.append(stats)
                 categories.update(stats.keys())
         x = range(1, len(data) + 1)
         maxval = 0
-        plt.figure(num=None, figsize=(7,4), dpi=300)
+        plt.figure(num=None, figsize=(7, 4), dpi=300)
         for cat in category_colors.keys():
             if cat not in categories:
                 continue
@@ -126,7 +127,7 @@ if __name__ == '__main__':
             dat = [d[cat] for d in data]
             maxval = max(maxval, max(dat))
             plt.plot(x, dat, 'o-' if cat != 'total' else 's--',
-                    color=category_colors[cat], label=cat)
+                     color=category_colors[cat], label=cat)
         if args.labels:
             plt.xticks(x, args.labels)
         plt.margins(0.1)

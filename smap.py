@@ -24,7 +24,7 @@ class Smap():
         get path to original image in broden
         """
         path = os.path.join(self.data.directory,
-                "images", data.image[index]["image"])
+                            "images", data.image[index]["image"])
         return path
 
     def open_saliency_map(self, index):
@@ -58,28 +58,26 @@ class Smap():
 
         alpha = alpha * 255
 
-
         condition = (np.where(alpha < 255 * threshold))
 
-        alpha[condition]=0
+        alpha[condition] = 0
         # converting array to image and reshapre
-        imarray[:, :, 3] = alpha 
-        im=Image.fromarray(imarray.astype(np.uint8))
-        original_image=Image.open(self.get_image_path(index))
-        im=im.resize(original_image.size, resample=Image.BILINEAR)
-
+        imarray[:, :, 3] = alpha
+        im = Image.fromarray(imarray.astype(np.uint8))
+        original_image = Image.open(self.get_image_path(index))
+        im = im.resize(original_image.size, resample=Image.BILINEAR)
 
         # merge two pictures
         original_image.paste(im, (0, 0), im)
 
         # save image
         original_image.save(os.path.join(self.directory,
-            "Images", "{}.png".format(index)))
+                                         "Images", "{}.png".format(index)))
 
 
 if __name__ == "__main__":
     print("loading data...")
-    data=loadseg.SegmentationData("dataset/broden1_227")
-    smap=Smap(data, "test")
+    data = loadseg.SegmentationData("dataset/broden1_227")
+    smap = Smap(data, "test")
     for i in range(10):
         smap.save_masked_image(i, threshold=0.6)

@@ -7,8 +7,8 @@ import sys
 # sys.exit()
 
 blob = caffe.proto.caffe_pb2.BlobProto()
-data = open( sys.argv[1] , 'rb' ).read()
+data = open(sys.argv[1], 'rb').read()
 blob.ParseFromString(data)
-arr = np.array( caffe.io.blobproto_to_array(blob) )
+arr = np.array(caffe.io.blobproto_to_array(blob))
 print arr, arr.shape
-print arr.mean(axis=(2,3))
+print arr.mean(axis=(2, 3))

@@ -7,6 +7,7 @@ import expdir
 import sys
 from scipy.io import savemat
 
+
 def max_probe(directory, blob, batch_size=None):
     # Make sure we have a directory to work in
     ed = expdir.ExperimentDirectory(directory)
@@ -24,7 +25,7 @@ def max_probe(directory, blob, batch_size=None):
     print 'Computing imgmax for %s shape %r' % (blob, shape)
     data = ed.open_mmap(blob=blob, shape=shape)
     imgmax = ed.open_mmap(blob=blob, part='imgmax',
-            mode='w+', shape=data.shape[:2])
+                          mode='w+', shape=data.shape[:2])
 
     # Automatic batch size selection: 64mb batches
     if batch_size is None:
@@ -40,13 +41,13 @@ def max_probe(directory, blob, batch_size=None):
         last_batch_time = batch_time
         print 'Imgmax %s index %d: %f %f' % (blob, i, rate, batch_rate)
         sys.stdout.flush()
-        batch = data[i:i+batch_size]
-        imgmax[i:i+batch_size] = batch.max(axis=(2,3))
+        batch = data[i:i + batch_size]
+        imgmax[i:i + batch_size] = batch.max(axis=(2, 3))
     print 'Writing imgmax'
     sys.stdout.flush()
     # Save as mat file
     filename = ed.filename('imgmax.mat', blob=blob)
-    savemat(filename, { 'imgmax': imgmax })
+    savemat(filename, {'imgmax': imgmax})
     # And as mmap
     ed.finish_mmap(imgmax)
 
@@ -62,17 +63,17 @@ if __name__ == '__main__':
         parser = argparse.ArgumentParser(
             description='Generate sorted files for probed activation data.')
         parser.add_argument(
-                '--directory',
-                default='.',
-                help='output directory for the net probe')
+            '--directory',
+            default='.',
+            help='output directory for the net probe')
         parser.add_argument(
-                '--blobs',
-                nargs='*',
-                help='network blob names to sort')
+            '--blobs',
+            nargs='*',
+            help='network blob names to sort')
         parser.add_argument(
-                '--batch_size',
-                type=int, default=None,
-                help='the batch size to use')
+            '--batch_size',
+            type=int, default=None,
+            help='the batch size to use')
         args = parser.parse_args()
         for blob in args.blobs:
             max_probe(args.directory, blob, args.batch_size)

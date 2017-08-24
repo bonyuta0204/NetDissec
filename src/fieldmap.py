@@ -9,6 +9,7 @@ from google.protobuf import text_format
 import upsample
 import rotate
 
+
 def print_fieldmap(definition, blob):
     '''
     definition: the filename for the caffe prototxt
@@ -29,6 +30,7 @@ def print_fieldmap(definition, blob):
         print b, f, a, '->', s
     print blob, fieldmap
 
+
 if __name__ == '__main__':
     import argparse
     import loadseg
@@ -36,11 +38,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Calculate fieldmap for a blob in a caffe network.')
     parser.add_argument(
-            '--blob',
-            help='network blob name to probe')
+        '--blob',
+        help='network blob name to probe')
     parser.add_argument(
-            '--definition',
-            help='the deploy prototext defining the net')
+        '--definition',
+        help='the deploy prototext defining the net')
     args = parser.parse_args()
 
     print_fieldmap(args.definition, args.blob)

@@ -5,12 +5,16 @@ Author: Spencer Rathbun
 Date: 05/30/2012
 Description: Unicode wrapper classes around csv reader/writers
 '''
-import csv, codecs, cStringIO
+import csv
+import codecs
+import cStringIO
+
 
 class UTF8Recoder:
     """
     Iterator that reads an encoded stream and reencodes the input to UTF-8
     """
+
     def __init__(self, f, encoding):
         self.reader = codecs.getreader(encoding)(f)
 
@@ -19,6 +23,7 @@ class UTF8Recoder:
 
     def next(self):
         return self.reader.next().encode("utf-8")
+
 
 class UnicodeReader:
     """
@@ -37,6 +42,7 @@ class UnicodeReader:
     def __iter__(self):
         return self
 
+
 class DictUnicodeReader:
     """
     A dict-based CSV reader which will iterate over lines in the CSV
@@ -49,11 +55,12 @@ class DictUnicodeReader:
 
     def next(self):
         row = self.reader.next()
-        outrow = dict([(k,unicode(v, "utf-8")) for k,v in row.iteritems()])
+        outrow = dict([(k, unicode(v, "utf-8")) for k, v in row.iteritems()])
         return outrow
 
     def __iter__(self):
         return self
+
 
 class UnicodeWriter:
     """
@@ -84,6 +91,7 @@ class UnicodeWriter:
         for row in rows:
             self.writerow(row)
 
+
 class DictUnicodeWriter(object):
     """
     A dict-based CSV writer which will write rows to CSV file "f",
@@ -91,16 +99,17 @@ class DictUnicodeWriter(object):
     """
 
     def __init__(self, f, fieldnames, dialect=csv.excel,
-            encoding="utf-8", **kwds):
+                 encoding="utf-8", **kwds):
         # Redirect output to a queue
         self.queue = cStringIO.StringIO()
-        self.writer = csv.DictWriter(self.queue, fieldnames, dialect=dialect, **kwds)
+        self.writer = csv.DictWriter(
+            self.queue, fieldnames, dialect=dialect, **kwds)
         self.stream = f
         self.encoder = codecs.getincrementalencoder(encoding)()
 
     def writerow(self, D):
         self.writer.writerow(
-                {k:unicode(v).encode("utf-8") for k,v in D.items()})
+            {k: unicode(v).encode("utf-8") for k, v in D.items()})
 
         # Fetch UTF-8 output from the queue ...
         data = self.queue.getvalue()
@@ -118,6 +127,7 @@ class DictUnicodeWriter(object):
 
     def writeheader(self):
         self.writer.writeheader()
+
 
 # Example code:
 '''

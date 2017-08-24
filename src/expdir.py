@@ -67,7 +67,7 @@ class ExperimentDirectory:
         return os.path.basename(self.directory)
 
     def filename(self, name, last=True, decimal=False,
-            blob=None, part=None, directory=None, aspair=False):
+                 blob=None, part=None, directory=None, aspair=False):
         '''
         Expands out a filename.  For example:
 
@@ -109,7 +109,7 @@ class ExperimentDirectory:
         the matching filename.
         '''
         n, fn = self.filename(name, last=last, decimal=decimal,
-                blob=blob, part=part, aspair=True)
+                              blob=blob, part=part, aspair=True)
         return n
 
     def ensure_dir(self, *args):
@@ -155,6 +155,7 @@ class ExperimentDirectory:
         if asdict:
             return info
         # Otherwise, return as an info object with attributes.
+
         class Info:
             pass
         result = Info()
@@ -198,7 +199,7 @@ class ExperimentDirectory:
     # [blob][-part].csv
     ###################################################################
     def csv_filename(self, blob=None, part=None,
-            inc=False, **kwargs):
+                     inc=False, **kwargs):
         result = self.filename('%s.csv' % (
             '-'.join(filter(None, [fn_safe(blob), part])),), **kwargs)
         return result
@@ -219,7 +220,8 @@ class ExperimentDirectory:
         filename = self.csv_filename(blob=blob, part=part)
         with open(filename) as f:
             reader = csv.DictReader(f)
-            result = [{k: convert(v) for k, v in row.items()} for row in reader]
+            result = [{k: convert(v) for k, v in row.items()}
+                      for row in reader]
             if readfields is not None:
                 readfields.extend(reader.fieldnames)
         return result
@@ -235,7 +237,7 @@ class ExperimentDirectory:
     # [blob][-part].json
     ###################################################################
     def json_filename(self, blob=None, part=None,
-            inc=False, **kwargs):
+                      inc=False, **kwargs):
         result = self.filename('%s.json' % (
             '-'.join(filter(None, [fn_safe(blob), part])),), **kwargs)
         return result
@@ -255,7 +257,7 @@ class ExperimentDirectory:
     ###################################################################
 
     def mmap_filename(self, blob=None, part=None,
-            inc=False, **kwargs):
+                      inc=False, **kwargs):
         result = self.filename('%s.mmap%s' % (
             '-'.join(filter(None, [fn_safe(blob), part])),
             '-inc' if inc else ''), **kwargs)
@@ -263,7 +265,7 @@ class ExperimentDirectory:
 
     def has_mmap(self, **kwargs):
         return os.path.isfile(
-                self.mmap_filename(**kwargs))
+            self.mmap_filename(**kwargs))
 
     def open_mmap(self, shape=None, mode='r', dtype='float32', **kwargs):
         '''
@@ -281,10 +283,10 @@ class ExperimentDirectory:
         if 'inc' not in nameargs:
             nameargs['inc'] = (mode and 'w' in mode)
         result = numpy.memmap(
-                self.mmap_filename(**nameargs),
-                mode=mode,
-                dtype=dtype,
-                shape=knownshape)
+            self.mmap_filename(**nameargs),
+            mode=mode,
+            dtype=dtype,
+            shape=knownshape)
         # Supports inferring shape of one unknown dimension
         if shape is not None and -1 in shape:
             lastdim = len(result) // abs(numpy.prod(shape))
@@ -302,7 +304,7 @@ class ExperimentDirectory:
         key = (mode, self.mmap_filename(**kwargs))
         if key not in global_memmap_cache:
             global_memmap_cache[key] = self.open_mmap(
-                    shape=shape, mode=mode, dtype=dtype, **kwargs)
+                shape=shape, mode=mode, dtype=dtype, **kwargs)
         return global_memmap_cache[key]
 
     def finish_mmap(self, array, delete=False):
@@ -333,6 +335,7 @@ class ExperimentDirectory:
     def remove_dir(self, filename):
         shutil.rmtree(self.filename(filename), ignore_errors=True)
 
+
 def fn_safe(blob, dotfree=False):
     '''Sometimes a blob name will have delimiters in it which are not
     filename safe.  Fix these by turning them into hyphens.'''
@@ -342,6 +345,7 @@ def fn_safe(blob, dotfree=False):
         return re.sub('[\.-/#?*!\s]+', '-', blob).strip('-')
     else:
         return re.sub('[-/#?*!\s]+', '-', blob).strip('-')
+
 
 def numbered_glob(pattern, last=True, decimal=False, every=False):
     '''Given a globbed file_*_pattern, returns a pair of a matching
@@ -370,4 +374,3 @@ def numbered_glob(pattern, last=True, decimal=False, every=False):
     if best_fn is None:
         raise IOError(pattern)
     return best_n, best_fn
-

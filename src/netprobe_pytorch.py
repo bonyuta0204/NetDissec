@@ -32,6 +32,7 @@ import expdir
 caffe.set_mode_gpu()
 caffe.set_device(0)
 
+
 def create_probe(
         directory, dataset, definition, weights, mean, blobs,
         colordepth=3,
@@ -62,24 +63,28 @@ def create_probe(
         net = torchvision.models.__dict__[args.definition](pretrained=True)
     else:
         # load your own model
-        net = torchvision.models.__dict__[args.definition](num_classes=args.num_classes)
+        net = torchvision.models.__dict__[
+            args.definition](num_classes=args.num_classes)
         checkpoint = torch.load(args.weights)
-        state_dict = {str.replace(k,'module.',''): v for k,v in checkpoint['state_dict'].iteritems()} # the data parallel layer will add 'module' before each layer name
+        # the data parallel layer will add 'module' before each layer name
+        state_dict = {str.replace(k, 'module.', ''): v for k,
+                      v in checkpoint['state_dict'].iteritems()}
         net.load_state_dict(state_dict)
     net.eval()
     # hook up to get the information for each selected layer
     layers = net._modules.keys()
     size_blobs_output = []
+
     def hook_size(module, input, output):
         size_blobs_output.append(output.data.size())
-    input_sample = V(torch.randn(1,3,args.input_size,args.input_size))
+    input_sample = V(torch.randn(1, 3, args.input_size, args.input_size))
     for blob in blobs:
         net._modules.get(blob).register_forward_hook(hook_size)
 
     output_sample = net(input_sample)
 
     input_dim = [args.input_size, args.input_size]
-    data_size = data.size(split) # the image size
+    data_size = data.size(split)  # the image size
     if limit is not None:
         data_size = min(data_size, limit)
 
@@ -103,18 +108,20 @@ def create_probe(
 
     # Create new (empty) mmaps
     if verbose:
-         print 'Creating new mmaps.'
+        print 'Creating new mmaps.'
     out = {}
     rot = None
     if rotation_seed is not None:
         rot = {}
     for idx, blob in enumerate(blobs):
         #shape = (data_size, ) + net.blobs[blob].data.shape[1:]
-        shape = (data_size, int(size_blobs_output[idx][1]), int(size_blobs_output[idx][2]),int(size_blobs_output[idx][3]))
+        shape = (data_size, int(size_blobs_output[idx][1]), int(
+            size_blobs_output[idx][2]), int(size_blobs_output[idx][3]))
         out[blob] = ed.open_mmap(blob=blob, mode='w+', shape=shape)
 
         # Rather than use the exact RF, here we use some heuristics to compute the approximate RF
-        size_RF = (args.input_size/size_blobs_output[idx][2], args.input_size/size_blobs_output[idx][3])
+        size_RF = (args.input_size /
+                   size_blobs_output[idx][2], args.input_size / size_blobs_output[idx][3])
         fieldmap = ((0, 0), size_RF, size_RF)
 
         ed.save_info(blob=blob, data=dict(
@@ -122,9 +129,9 @@ def create_probe(
 
     # The main loop
     if verbose:
-         print 'Beginning work.'
+        print 'Beginning work.'
     pf = loadseg.SegmentationPrefetcher(data, categories=['image'],
-            split=split, once=True, batch_size=batch_size, ahead=ahead)
+                                        split=split, once=True, batch_size=batch_size, ahead=ahead)
     index = 0
     start_time = time.time()
     last_batch_time = start_time
@@ -133,13 +140,14 @@ def create_probe(
 
     # hook the feature extractor
     features_blobs = []
+
     def hook_feature(module, input, output):
         features_blobs.append(output.data.cpu().numpy())
     for blob in blobs:
         net._modules.get(blob).register_forward_hook(hook_feature)
 
     for batch in pf.tensor_batches(bgr_mean=mean):
-        del features_blobs[:] # clear up the feature basket
+        del features_blobs[:]  # clear up the feature basket
         batch_time = time.time()
         rate = index / (batch_time - start_time + 1e-15)
         batch_rate = batch_size / (batch_time - last_batch_time + 1e-15)
@@ -156,21 +164,23 @@ def create_probe(
         if colordepth == 1:
             inp = numpy.mean(inp, axis=1, keepdims=True)
         # previous feedforward case
-        inp = inp[:,::-1,:,:]
+        inp = inp[:, ::-1, :, :]
         inp_tensor = V(torch.from_numpy(inp.copy()))
-        inp_tensor.div_(255.0*0.224) # approximately normalize the input to make the images scaled at around 1.
+        # approximately normalize the input to make the images scaled at around 1.
+        inp_tensor.div_(255.0 * 0.224)
         inp_tensor = inp_tensor.cuda()
         result = net.forward(inp_tensor)
         # output the hooked feature
         for i, key in enumerate(blobs):
-            out[key][index:index+batch_size] = numpy.copy(features_blobs[i][:batch_size])
+            out[key][index:index +
+                     batch_size] = numpy.copy(features_blobs[i][:batch_size])
         # print 'Recording data in mmap done'
         index += batch_size
         if index >= data_size:
             break
     assert index == data_size, (
-            "Data source should return evey item once %d %d." %
-            (index, data_size))
+        "Data source should return evey item once %d %d." %
+        (index, data_size))
     if verbose:
         print 'Renaming mmaps.'
     for blob in blobs:
@@ -193,6 +203,7 @@ def ensure_dir(targetdir):
         except:
             print 'Could not create', targetdir
             pass
+
 
 def write_readme_file(args, ed, verbose):
     '''
@@ -219,6 +230,7 @@ def write_readme_file(args, ed, verbose):
         except:
             pass
 
+
 if __name__ == '__main__':
     import sys
     import traceback
@@ -226,65 +238,65 @@ if __name__ == '__main__':
     try:
         import loadseg
 
-        parser = argparse.ArgumentParser(description=
-            'Probe a caffe network and save results in a directory.')
+        parser = argparse.ArgumentParser(
+            description='Probe a caffe network and save results in a directory.')
         parser.add_argument(
-                '--directory',
-                default='.',
-                help='output directory for the net probe')
+            '--directory',
+            default='.',
+            help='output directory for the net probe')
         parser.add_argument(
-                '--blobs',
-                nargs='*',
-                help='network blob names to collect')
+            '--blobs',
+            nargs='*',
+            help='network blob names to collect')
         parser.add_argument(
-                '--definition',
-                help='the deploy prototext defining the net')
+            '--definition',
+            help='the deploy prototext defining the net')
         parser.add_argument(
-                '--weights',
-                default=None,
-                help='the pretrained weight')
+            '--weights',
+            default=None,
+            help='the pretrained weight')
         parser.add_argument(
-                '--mean',
-                nargs='*', type=float,
-                help='mean values to subtract from input')
+            '--mean',
+            nargs='*', type=float,
+            help='mean values to subtract from input')
         parser.add_argument(
-                '--dataset',
-                help='the directory containing the dataset to use')
+            '--dataset',
+            help='the directory containing the dataset to use')
         parser.add_argument(
-                '--split',
-                help='the split of the dataset to use')
+            '--split',
+            help='the split of the dataset to use')
         parser.add_argument(
-                '--limit',
-                type=int, default=None,
-                help='limit dataset to this size')
+            '--limit',
+            type=int, default=None,
+            help='limit dataset to this size')
         parser.add_argument(
-                '--batch_size',
-                type=int, default=64,
-                help='the batch size to use')
+            '--batch_size',
+            type=int, default=64,
+            help='the batch size to use')
         parser.add_argument(
-                '--input_size',
-                type=int, default=224,
-                help='the image size input to the network(usually it is 224x224, but alexnet uses 227x227)')
+            '--input_size',
+            type=int, default=224,
+            help='the image size input to the network(usually it is 224x224, but alexnet uses 227x227)')
         parser.add_argument(
-                '--ahead',
-                type=int, default=4,
-                help='number of batches to prefetch')
+            '--ahead',
+            type=int, default=4,
+            help='number of batches to prefetch')
         parser.add_argument(
-                '--rotation_seed',
-                type=int, default=None,
-                help='the seed for the random rotation to apply')
+            '--rotation_seed',
+            type=int, default=None,
+            help='the seed for the random rotation to apply')
         parser.add_argument(
-                '--rotation_power',
-                type=float, default=1.0,
-                help='the power of hte random rotation')
+            '--rotation_power',
+            type=float, default=1.0,
+            help='the power of hte random rotation')
         parser.add_argument(
-                '--colordepth',
-                type=int, default=3,
-                help='set to 1 for grayscale')
+            '--colordepth',
+            type=int, default=3,
+            help='set to 1 for grayscale')
         parser.add_argument(
-                '--num_classes',
-                type=int, default=365,
-                help='the number of classes for the network output(default is 365)')
+            '--num_classes',
+            type=int, default=365,
+            help='the number of classes for the network output(default is 365)')
 
         args = parser.parse_args()
         create_probe(
