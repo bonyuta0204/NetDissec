@@ -1,4 +1,5 @@
 .*
+
 *.pyc
 *.ipynb
 dataset
@@ -10,3 +11,4 @@ probes/
 !/dissection/README.md
 !/zoo/README.md
 !/.gitignore
+nohup.out
