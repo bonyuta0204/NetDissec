@@ -7,6 +7,9 @@ dissection
 zoo
 **temp*
 probes/
+zoo_fcn/
+test/
+*.png
 !/dataset/README.md
 !/dissection/README.md
 !/zoo/README.md
