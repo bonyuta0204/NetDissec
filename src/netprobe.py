@@ -7,6 +7,7 @@ import shutil
 import codecs
 import time
 import sys
+from PIL import Image
 
 os.environ['GLOG_minloglevel'] = '2'
 import caffe
@@ -55,8 +56,13 @@ def create_probe(
     with open(definition, 'r') as dfn_file:
         text_format.Merge(dfn_file.read(), np)
     net = caffe.Net(definition, weights, caffe.TEST)
+    # change input size
+    input_dim= Image.open(data.filename(1)).size
     input_blob = net.inputs[0]
-    input_dim = net.blobs[input_blob].data.shape[2:]
+    print(input_dim)
+    # change blob size
+    net.blobs[input_blob].reshape(5, 3, input_dim[0], input_dim[1])
+    net.forward()
     data_size = data.size(split)
     if limit is not None:
         data_size = min(data_size, limit)
