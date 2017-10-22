@@ -54,6 +54,19 @@ def summarize(scores, threshold, top_only=True):
             result['total'] += 1.0 / denom
     return result
 
+def all_blobs(directory):
+    """
+    return all blobs in directories/html
+
+    """
+    blobs = []
+    html_dir = os.path.join(directory, "html")
+    for f in os.listdir(html_dir):
+        if "html" in f:
+            blobs.append(f.split(".")[0])
+    return blobs
+
+
 
 if __name__ == '__main__':
     import argparse
@@ -98,7 +111,7 @@ if __name__ == '__main__':
             help='graph title')
         parser.add_argument(
             '--legend',
-            default='upper right',
+            default='upper left',
             help='location of legend')
         parser.add_argument(
             '--maxy',
@@ -110,6 +123,12 @@ if __name__ == '__main__':
         args = parser.parse_args()
         data = []
         categories = set(category_colors.keys())
+        # infer variables
+        # use blob name as labels if label if not specified
+        if args.labels is None:
+            args.labels = args.blobs
+        # save file as directories/graph.png
+        
         for directory in args.directories:
             for blob in args.blobs:
                 stats = summarize(loadviz(directory, blob), args.threshold,
@@ -130,6 +149,7 @@ if __name__ == '__main__':
                      color=category_colors[cat], label=cat)
         if args.labels:
             plt.xticks(x, args.labels)
+
         plt.margins(0.1)
         plt.legend(loc=args.legend)
         if args.maxy is not None:
@@ -144,7 +164,10 @@ if __name__ == '__main__':
         if args.title:
             plt.title(args.title)
         plt.ylabel('portion of units alinged to a category concept')
-        plt.savefig(args.out)
+        if args.out is not None:
+            plt.savefig(args.out)
+        else:
+            plt.savefig(os.path.join(directory, "graph.png"))
 
     except:
         traceback.print_exc(file=sys.stdout)

@@ -142,14 +142,27 @@ def fast_process(fn_t, fn_read, shape, tally_depth, ds, iw, ih,
         print("Caught KeyboardInterrupt, terminating workers")
         pool.terminate()
         raise
+    except Exception as e:
+            # This prints the type,  value,  and stack trace of the
+            # current exception being handled.
+        traceback.print_exc()
+     
+        print()
+        raise e
     else:
+
         pool.close()
     pool.join()
 
 
 def individual_process(args):
-    process_data(*args)
-
+    try:
+        process_data(*args)
+    except Exception as e:
+            # This prints the type,  value,  and stack trace of the
+            # current exception being handled.
+        traceback.print_exc()
+ 
 
 global_memmap_cache = {}
 
