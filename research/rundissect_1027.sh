@@ -18,7 +18,7 @@
 THRESHOLD="0.04"
 WORKDIR="dissection"
 TALLYDEPTH=2048
-PARALLEL=10
+PARALLEL=4
 TALLYBATCH=16
 PROBEBATCH=64
 QUANTILE="0.005"
@@ -130,12 +130,6 @@ if [ -z $LAYERS ]; then
   echo '--layers layers' must be specified
   exit 1
 fi
-
-if [ -z $RESOLUTION ]; then
-  echo '--resolution resolution' must be specified
-  exit 1
-fi
-
 
 # Set up directory to work in, and lay down pid file etc.
 mkdir -p $WORKDIR/$DIR
