@@ -1,0 +1,3 @@
+to make comparison including facevgg
+make comparison of three types: num of detectors, number of unique detectors average of IOT for eace category
+compare models and layers in a model
