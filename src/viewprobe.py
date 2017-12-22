@@ -7,8 +7,10 @@ import os
 import numpy
 import re
 import upsample
+import sys
 import time
 import loadseg
+import pandas as pd
 from scipy.misc import imread, imresize, imsave
 from loadseg import normalize_label
 import expdir
@@ -27,33 +29,52 @@ class NetworkProbe:
             self.layer[blob] = LayerProbe(self.ed, blob, self.ds)
 
     def score_tally_stats(self, layer, verbose=False):
+        """calculate variours tally stats.
+            read comments in source code for detail
+        """
         # First, score every unit
         if verbose:
             print 'Adding tallys of unit/label alignments.'
             sys.stdout.flush()
+            # ta: sum of activation in each layer (num_of_channels,)
+            # tg: sum of grand-truth in each concept(num?of?concepts,)
+            # tc: intersection of grand-truth and activation (#channles, #concepts)
         ta, tg, ti = self.summarize_tally(layer)
+
+        # labelcat: one hot vector which suggest category of each concept (#concepts, #categories)
         labelcat = onehot(primary_categories_per_index(self.ds))
-        tc = np.count_act_with_labelcat(layer)
+        tc = self.count_act_with_labelcat(layer)
         # If we were doing per-category activations p, then:
         # c = numpy.dot(p, labelcat.transpose())
         epsilon = 1e-20  # avoid division-by-zero
         # If we were counting activations on non-category examples then:
         # iou = i / (a[:,numpy.newaxis] + g[numpy.newaxis,:] - i + epsilon)
+        # iou is iou for each channel and concept (# channel, # concepts)
         iou = ti / (tc + tg[numpy.newaxis, :] - ti + epsilon)
         # Let's tally by primary-category.
+        # pc is (#concepts,) array whose elements indicate number of category
+
         pc = primary_categories_per_index(self.ds)
         categories = self.ds.category_names()
         ar = numpy.arange(iou.shape[1])
         # actually - let's get the top iou for every category
+        # pciou: tensor with shape (#category, #channel, # label). list or iou table for each category
         pciou = numpy.array([iou * (pc[ar] == ci)[numpy.newaxis, :]
                              for ci in range(len(categories))])
         # label_iou = iou.argmax(axis=1)
+        # label_pciou: (#category, #channel) array.
+        # each elements represents index of concepts which maximize iou for a chanel in one category
+
         label_pciou = pciou.argmax(axis=2)
         # name_iou = [self.ds.name(None, i) for i in label_iou]
+        # name_picou : list of list. equivalent to (#category, #channel)
+        # each element represents name of concepts which maximize iou for a channel in one category
         name_pciou = [
             [self.ds.name(None, j) for j in label_pciou[ci]]
             for ci in range(len(label_pciou))]
         # score_iou = iou[numpy.arange(iou.shape[0]), label_iou]
+        # ci represents category index
+
         score_pciou = pciou[
             numpy.arange(pciou.shape[0])[:, numpy.newaxis],
             numpy.arange(pciou.shape[1])[numpy.newaxis, :],
@@ -64,6 +85,38 @@ class NetworkProbe:
         # cat_iou = [categories[cat_per_label[i]] for i in label_iou]
         # Now sort units by score and visulize each one
         return bestcat_pciou, name_pciou, score_pciou, label_pciou, tc, tg, ti
+
+    def get_iou_table(self, layer):
+        """
+
+        generate iou table (#channel, #concepts) in pandas DataFrame format
+
+        :param layer:
+        :return:
+        """
+
+
+        # ta: sum of activation in each layer (num_of_channels,)
+        # tg: sum of grand-truth in each concept(num?of?concepts,)
+        # tc: intersection of grand-truth and activation (#channles, #concepts)
+        ta, tg, ti = self.summarize_tally(layer)
+
+        # labelcat: one hot vector which suggest category of each concept (#concepts, #categories)
+        labelcat = onehot(primary_categories_per_index(self.ds))
+        tc = self.count_act_with_labelcat(layer)
+        # If we were doing per-category activations p, then:
+        # c = numpy.dot(p, labelcat.transpose())
+        epsilon = 1e-20  # avoid division-by-zero
+        # If we were counting activations on non-category examples then:
+        # iou = i / (a[:,numpy.newaxis] + g[numpy.newaxis,:] - i + epsilon)
+        # iou is iou for each channel and concept (# channel, # concepts)
+        iou = ti / (tc + tg[numpy.newaxis, :] - ti + epsilon)
+
+        category_names = [self.ds.name(None, i)for i in range(iou.shape[1])]
+        df = pd.DataFrame(iou, columns=category_names)
+        return df
+
+
 
     def generate_html_summary(self, layer,
                               imsize=64, imcount=16, imscale=None, tally_stats=None,
