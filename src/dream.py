@@ -6,6 +6,7 @@ import scipy.ndimage as nd
 import PIL.Image
 import random
 import os
+import argparse
 import matplotlib.pyplot as plt
 from IPython.display import clear_output, Image, display
 from google.protobuf import text_format
@@ -135,20 +136,21 @@ def iter_dream(net, img, blob, n_iter=50, channel=0):
 
 class PreferedImage(object):
 
-    def __init__(self, prototxt, caffemodel, root_dir= "pf_images", height=575, width=1024):
+    def __init__(self, prototxt='/home/nakamura/network_dissection/NetDissect/zoo/alexnet_imagenet_full_conv.prototxt', caffemodel='/home/nakamura/network_dissection/NetDissect/zoo/alexnet_imagenet_full_conv.caffemodel',  root_dir= "pf_images", height=575, width=1024):
         self.net = constuct_net(prototxt, caffemodel)
         self.height = height
-        self.width = 1024
+        self.width = width
         self.root_dir = root_dir
         self.init_image = get_white_noise_image(self.height, self.width)
 
-    def compute_pf_image(self, blob, channel):
+    def compute_pf_image(self, blob, channel, n_iter=30):
+        print("creating prefered image for {} channel {:04d}".format(blob, channel))
         frame = self.init_image
         frame_i = 0
 
         h, w = frame.shape[:2]
         s = 0.05 # scale coefficient
-        for i in xrange(100):
+        for i in xrange(n_iter):
             print("iter_{0:03d}".format(i))
             frame = deepdream(self.net, frame, end=blob, channel=channel)
             PIL.Image.fromarray(np.uint8(frame)).save(self.save_img(blob, channel, frame_i))
@@ -158,52 +160,23 @@ class PreferedImage(object):
     def save_img(self, blob, channel, n_iter):
         save_dir = os.path.join(self.root_dir, blob, "{0:04d}".format(channel))
         if not os.path.isdir(save_dir):
-            os.mkdirs(save_dir)
+            os.makedirs(save_dir)
         img_file = os.path.join(save_dir, "{0:02d}.png".format(n_iter))
         return img_file
 
 
 if __name__ == "__main__":
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--blob", type=str )
+    parser.add_argument("--channel", type=int)
+    args = parser.parse_args()
+    print(args.blob)
+    print(args.channel)
+
     model_path = '/home/nakamura/network_dissection/NetDissect/zoo/' # substitute your path here
     prototxt = os.path.join(model_path,'alexnet_imagenet_full_conv.prototxt')
     caffemodel = os.path.join(model_path,'alexnet_imagenet_full_conv.caffemodel')
 
-    pf = PreferedImage(prototxt, caffemodel)
-    pf.compute_pf_image('conv3', 0)
-
-    model_path = '/home/nakamura/network_dissection/NetDissect/zoo/' # substitute your path here
-    net = constuct_net(model_path)
-
-    img = np.float32(PIL.Image.open('sky1024px.jpg'))
-    noise = get_white_noise_image(575, 1024)
-
-
-    iter_dream(net, noise, "conv1", channel=1)
-
-    """
-
-    guide = np.float32(PIL.Image.open('flowers.jpg'))
-    showarray(guide)
-
-    end = 'inception_3b/output'
-    h, w = guide.shape[:2]
-    src, dst = net.blobs['data'], net.blobs[end]
-    src.reshape(1,3,h,w)
-    src.data[0] = preprocess(net, guide)
-    net.forward(end=end)
-    guide_features = dst.data[0].copy()
-
-    def objective_guide(dst):
-        x = dst.data[0].copy()
-        y = guide_features
-        ch = x.shape[0]
-        x = x.reshape(ch,-1)
-        y = y.reshape(ch,-1)
-        A = x.T.dot(y) # compute the matrix of dot-products with guide features
-        dst.diff[0].reshape(ch,-1)[:] = y[:,A.argmax(1)] # select ones that match best
-
-
-    _=deepdream(net, img, end=end, objective=objective_guide)
-    """
-
+    pf = PreferedImage(prototxt, caffemodel, root_dir="../pf_images")
+    pf.compute_pf_image(args.blob, args.channel)

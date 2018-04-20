@@ -18,3 +18,4 @@ test/
 !/research/*.ipynb
 !/.gitignore
 nohup.out
+tmp.prototxt
